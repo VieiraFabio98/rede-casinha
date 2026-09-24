@@ -1,0 +1,434 @@
+// Schema do banco da Rede Casinha (ver docs/04-arquitetura.md).
+// Depois de alterar: `npm run db:migrate` (cria/aplica a migration e regera o client).
+//
+// Convenções: modelos em PascalCase no singular, tabelas em snake_case no plural (@@map);
+// campos em camelCase no código e snake_case no banco (@map). Datas sempre em timestamptz.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  // Explícitos para o client gerado ser igual no host e no Docker (API em ESM, "module": "nodenext").
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+  previewFeatures     = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum NivelAcesso {
+  colaborador
+  verificado
+  moderador
+  admin
+
+  @@map("nivel_acesso")
+}
+
+enum AnimaisAtendidos {
+  caes
+  gatos
+  ambos
+
+  @@map("animais_atendidos")
+}
+
+enum StatusCasinha {
+  ok
+  atencao
+  urgente
+  sem_noticias
+
+  @@map("status_casinha")
+}
+
+enum SituacaoCasinha {
+  ativa
+  em_revisao
+  inativa
+
+  @@map("situacao_casinha")
+}
+
+enum TipoNecessidade {
+  racao
+  agua
+  reforma
+  cobertas
+  limpeza
+  remedio_veterinario
+  outro
+
+  @@map("tipo_necessidade")
+}
+
+enum Urgencia {
+  normal
+  urgente
+
+  @@map("urgencia")
+}
+
+enum StatusNecessidade {
+  aberta
+  atendida
+  expirada
+  cancelada
+
+  @@map("status_necessidade")
+}
+
+enum TipoAtividade {
+  cadastro
+  reporte
+  reconfirmacao
+  atendimento
+  contestacao
+  check_in
+  edicao
+  adocao
+  fim_adocao
+  expiracao
+  desativacao_pedida
+  moderacao
+
+  @@map("tipo_atividade")
+}
+
+enum StatusModeracao {
+  visivel
+  oculto_auto
+  oculto_moderador
+
+  @@map("status_moderacao")
+}
+
+enum AlvoDenuncia {
+  casinha
+  foto
+  necessidade
+  perfil
+
+  @@map("alvo_denuncia")
+}
+
+enum MotivoDenuncia {
+  falsa
+  duplicada
+  ofensiva
+  expoe_pessoa
+  perigo_animais
+  outro
+
+  @@map("motivo_denuncia")
+}
+
+enum StatusDenuncia {
+  aberta
+  procedente
+  improcedente
+
+  @@map("status_denuncia")
+}
+
+// ─── Conta ────────────────────────────────────────────────────────────────────
+
+model Usuario {
+  id                String    @id @default(uuid(7)) @db.Uuid
+  /// Sempre em minúsculas.
+  email             String    @unique
+  /// `sub` do ID token do Google.
+  googleSub         String?   @unique @map("google_sub")
+  /// argon2. Só a conta de demonstração do revisor da loja usa senha.
+  senhaHash         String?   @map("senha_hash")
+  emailVerificadoEm DateTime? @map("email_verificado_em") @db.Timestamptz
+  criadoEm          DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+
+  perfil  Perfil?
+  sessoes Sessao[]
+
+  @@map("usuarios")
+}
+
+/// Refresh tokens (opacos, guardados só como hash, rotativos).
+model Sessao {
+  id             String    @id @default(uuid(7)) @db.Uuid
+  usuarioId      String    @map("usuario_id") @db.Uuid
+  refreshHash    String    @unique @map("refresh_hash")
+  expiraEm       DateTime  @map("expira_em") @db.Timestamptz
+  revogadaEm     DateTime? @map("revogada_em") @db.Timestamptz
+  /// Rotação: reusar um token já substituído revoga todas as sessões do usuário.
+  substituidaPor String?   @map("substituida_por") @db.Uuid
+  criadaEm       DateTime  @default(now()) @map("criada_em") @db.Timestamptz
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("sessoes")
+}
+
+/// Códigos de 6 dígitos enviados por e-mail (guardados só como hash).
+model CodigoEmail {
+  id         String    @id @default(uuid(7)) @db.Uuid
+  email      String
+  codigoHash String    @map("codigo_hash")
+  expiraEm   DateTime  @map("expira_em") @db.Timestamptz
+  tentativas Int       @default(0)
+  usadoEm    DateTime? @map("usado_em") @db.Timestamptz
+  criadoEm   DateTime  @default(now()) @map("criado_em") @db.Timestamptz
+
+  @@index([email, criadoEm(sort: Desc)])
+  @@map("codigos_email")
+}
+
+/// Criado ao concluir o cadastro (apelido + 18 anos + termos). 1:1 com Usuario.
+model Perfil {
+  id                 String      @id @db.Uuid
+  /// Como o usuário digitou (exibição).
+  apelido            String      @db.VarChar(30)
+  /// Minúsculas e sem acentos: garante apelidos únicos sem diferenciar "Marta" de "marta".
+  apelidoNormalizado String      @unique @map("apelido_normalizado") @db.VarChar(30)
+  nivel              NivelAcesso @default(colaborador)
+  maiorDeIdadeEm     DateTime    @map("maior_de_idade_em") @db.Timestamptz
+  termosVersao       String      @map("termos_versao") @db.VarChar(20)
+  termosAceitosEm    DateTime    @map("termos_aceitos_em") @db.Timestamptz
+  bloqueadoAte       DateTime?   @map("bloqueado_ate") @db.Timestamptz
+  verificadoPorId    String?     @map("verificado_por") @db.Uuid
+  criadoEm           DateTime    @default(now()) @map("criado_em") @db.Timestamptz
+
+  usuario       Usuario  @relation(fields: [id], references: [id], onDelete: Cascade)
+  verificadoPor Perfil?  @relation("VerificacaoPerfil", fields: [verificadoPorId], references: [id], onDelete: SetNull)
+  verificados   Perfil[] @relation("VerificacaoPerfil")
+
+  casinhasCriadas       Casinha[]           @relation("CasinhaCriador")
+  adocoes               Adocao[]
+  necessidadesCriadas   Necessidade[]       @relation("NecessidadeCriador")
+  necessidadesAtendidas Necessidade[]       @relation("NecessidadeAtendente")
+  atividades            Atividade[]
+  fotos                 Foto[]
+  denunciasFeitas       Denuncia[]          @relation("DenunciaDenunciante")
+  denunciasResolvidas   Denuncia[]          @relation("DenunciaResolvedor")
+  acoesModeracao        AcaoModeracao[]
+  acessosLocalizacao    AcessoLocalizacao[]
+  limitesUso            LimiteUso[]
+
+  @@map("perfis")
+}
+
+// ─── Casinhas ─────────────────────────────────────────────────────────────────
+
+/// Dados públicos. A coordenada aqui é a PÚBLICA (deslocada 150–400 m da real).
+model Casinha {
+  /// Gerado no celular (idempotência offline).
+  id                String           @id @default(uuid(7)) @db.Uuid
+  nome              String           @db.VarChar(60)
+  descricao         String?          @db.VarChar(500)
+  animais           AnimaisAtendidos
+  latPublica        Float            @map("lat_publica")
+  lngPublica        Float            @map("lng_publica")
+  uf                String?          @db.Char(2)
+  municipioIbge     Int?             @map("municipio_ibge")
+  status            StatusCasinha    @default(sem_noticias)
+  situacao          SituacaoCasinha  @default(ativa)
+  moderacao         StatusModeracao  @default(visivel)
+  ultimaAtividadeEm DateTime         @default(now()) @map("ultima_atividade_em") @db.Timestamptz
+  criadaPorId       String?          @map("criada_por") @db.Uuid
+  /// Destino, quando esta casinha foi mesclada em outra (duplicata).
+  mescladaEmId      String?          @map("mesclada_em") @db.Uuid
+  criadaEm          DateTime         @default(now()) @map("criada_em") @db.Timestamptz
+  atualizadaEm      DateTime         @updatedAt @map("atualizada_em") @db.Timestamptz
+
+  criadaPor  Perfil?   @relation("CasinhaCriador", fields: [criadaPorId], references: [id], onDelete: SetNull)
+  mescladaEm Casinha?  @relation("MesclaCasinha", fields: [mescladaEmId], references: [id], onDelete: SetNull)
+  mescladas  Casinha[] @relation("MesclaCasinha")
+
+  localizacao        CasinhaLocalizacao?
+  adocoes            Adocao[]
+  necessidades       Necessidade[]
+  atividades         Atividade[]
+  fotos              Foto[]
+  acessosLocalizacao AcessoLocalizacao[]
+
+  @@index([latPublica, lngPublica])
+  @@index([criadaPorId])
+  @@map("casinhas")
+}
+
+/// Localização EXATA. Sensível: só o módulo `localizacao` da API lê esta tabela.
+model CasinhaLocalizacao {
+  casinhaId    String   @id @map("casinha_id") @db.Uuid
+  lat          Float
+  lng          Float
+  /// Precisão do GPS no cadastro, em metros.
+  precisaoM    Float    @map("precisao_m") @db.Real
+  atualizadaEm DateTime @updatedAt @map("atualizada_em") @db.Timestamptz
+
+  casinha Casinha @relation(fields: [casinhaId], references: [id], onDelete: Cascade)
+
+  @@index([lat, lng])
+  @@map("casinhas_localizacao")
+}
+
+model Adocao {
+  id          String    @id @default(uuid(7)) @db.Uuid
+  casinhaId   String    @map("casinha_id") @db.Uuid
+  usuarioId   String    @map("usuario_id") @db.Uuid
+  ativa       Boolean   @default(true)
+  iniciadaEm  DateTime  @default(now()) @map("iniciada_em") @db.Timestamptz
+  encerradaEm DateTime? @map("encerrada_em") @db.Timestamptz
+
+  casinha Casinha @relation(fields: [casinhaId], references: [id], onDelete: Cascade)
+  usuario Perfil  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  /// Uma adoção ativa por usuário e casinha (o máximo de 3 por casinha é regra do serviço).
+  @@unique([casinhaId, usuarioId], map: "adocoes_ativa_unica", where: raw("ativa"))
+  @@index([usuarioId])
+  @@map("adocoes")
+}
+
+model Necessidade {
+  /// Gerado no celular (idempotência offline).
+  id                String            @id @default(uuid(7)) @db.Uuid
+  casinhaId         String            @map("casinha_id") @db.Uuid
+  tipo              TipoNecessidade
+  urgencia          Urgencia          @default(normal)
+  observacao        String?           @db.VarChar(280)
+  status            StatusNecessidade @default(aberta)
+  criadaPorId       String?           @map("criada_por") @db.Uuid
+  criadaEm          DateTime          @default(now()) @map("criada_em") @db.Timestamptz
+  criadaNoCelularEm DateTime          @map("criada_no_celular_em") @db.Timestamptz
+  expiraEm          DateTime          @map("expira_em") @db.Timestamptz
+  atendidaPorId     String?           @map("atendida_por") @db.Uuid
+  atendidaEm        DateTime?         @map("atendida_em") @db.Timestamptz
+  /// Resultado da checagem de proximidade (≤ 100 m). Nunca exposto ao app.
+  validadoLocal     Boolean?          @map("validado_local")
+
+  casinha     Casinha     @relation(fields: [casinhaId], references: [id], onDelete: Cascade)
+  criadaPor   Perfil?     @relation("NecessidadeCriador", fields: [criadaPorId], references: [id], onDelete: SetNull)
+  atendidaPor Perfil?     @relation("NecessidadeAtendente", fields: [atendidaPorId], references: [id], onDelete: SetNull)
+  atividades  Atividade[]
+
+  /// RN02: no máximo uma necessidade ABERTA de cada tipo por casinha.
+  @@unique([casinhaId, tipo], map: "necessidades_aberta_por_tipo", where: raw("status = 'aberta'"))
+  @@index([casinhaId, status])
+  @@index([status, expiraEm])
+  @@map("necessidades")
+}
+
+/// Histórico append-only da casinha.
+model Atividade {
+  /// Gerado no celular (idempotência offline).
+  id                String        @id @default(uuid(7)) @db.Uuid
+  casinhaId         String        @map("casinha_id") @db.Uuid
+  necessidadeId     String?       @map("necessidade_id") @db.Uuid
+  tipo              TipoAtividade
+  usuarioId         String?       @map("usuario_id") @db.Uuid
+  observacao        String?       @db.VarChar(280)
+  criadaEm          DateTime      @default(now()) @map("criada_em") @db.Timestamptz
+  criadaNoCelularEm DateTime?     @map("criada_no_celular_em") @db.Timestamptz
+  /// Nunca exposto ao app.
+  validadoLocal     Boolean?      @map("validado_local")
+
+  casinha     Casinha      @relation(fields: [casinhaId], references: [id], onDelete: Cascade)
+  necessidade Necessidade? @relation(fields: [necessidadeId], references: [id], onDelete: SetNull)
+  usuario     Perfil?      @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  fotos       Foto[]
+
+  @@index([casinhaId, criadaEm(sort: Desc)])
+  @@index([usuarioId])
+  @@map("atividades")
+}
+
+model Foto {
+  /// Gerado no celular (idempotência offline).
+  id             String          @id @default(uuid(7)) @db.Uuid
+  casinhaId      String          @map("casinha_id") @db.Uuid
+  /// Null = foto de perfil da casinha.
+  atividadeId    String?         @map("atividade_id") @db.Uuid
+  /// Chave na interface de armazenamento, ex.: fotos/{casinha_id}/{id}.jpg
+  chave          String
+  chaveMiniatura String          @map("chave_miniatura")
+  enviadaPorId   String?         @map("enviada_por") @db.Uuid
+  criadaEm       DateTime        @default(now()) @map("criada_em") @db.Timestamptz
+  /// Fotos de atendimento expiram em 90 dias.
+  expiraEm       DateTime?       @map("expira_em") @db.Timestamptz
+  moderacao      StatusModeracao @default(visivel)
+
+  casinha    Casinha    @relation(fields: [casinhaId], references: [id], onDelete: Cascade)
+  atividade  Atividade? @relation(fields: [atividadeId], references: [id], onDelete: SetNull)
+  enviadaPor Perfil?    @relation(fields: [enviadaPorId], references: [id], onDelete: SetNull)
+
+  @@index([casinhaId])
+  @@index([expiraEm])
+  @@map("fotos")
+}
+
+// ─── Moderação e auditoria ───────────────────────────────────────────────────
+
+model Denuncia {
+  id             String         @id @default(uuid(7)) @db.Uuid
+  alvoTipo       AlvoDenuncia   @map("alvo_tipo")
+  alvoId         String         @map("alvo_id") @db.Uuid
+  motivo         MotivoDenuncia
+  descricao      String?        @db.VarChar(500)
+  denuncianteId  String?        @map("denunciante_id") @db.Uuid
+  status         StatusDenuncia @default(aberta)
+  resolvidaPorId String?        @map("resolvida_por") @db.Uuid
+  resolvidaEm    DateTime?      @map("resolvida_em") @db.Timestamptz
+  criadaEm       DateTime       @default(now()) @map("criada_em") @db.Timestamptz
+
+  denunciante  Perfil? @relation("DenunciaDenunciante", fields: [denuncianteId], references: [id], onDelete: SetNull)
+  resolvidaPor Perfil? @relation("DenunciaResolvedor", fields: [resolvidaPorId], references: [id], onDelete: SetNull)
+
+  /// Cada usuário denuncia um mesmo alvo uma vez.
+  @@unique([alvoId, denuncianteId])
+  @@index([status, criadaEm])
+  @@map("denuncias")
+}
+
+model AcaoModeracao {
+  id          String   @id @default(uuid(7)) @db.Uuid
+  moderadorId String?  @map("moderador_id") @db.Uuid
+  acao        String   @db.VarChar(40)
+  alvoTipo    String   @map("alvo_tipo") @db.VarChar(20)
+  alvoId      String   @map("alvo_id") @db.Uuid
+  motivo      String?  @db.VarChar(500)
+  criadaEm    DateTime @default(now()) @map("criada_em") @db.Timestamptz
+
+  moderador Perfil? @relation(fields: [moderadorId], references: [id], onDelete: SetNull)
+
+  @@index([alvoId])
+  @@index([moderadorId, criadaEm])
+  @@map("acoes_moderacao")
+}
+
+/// Auditoria de quem viu a localização exata (limite de 50 casinhas/dia por verificado).
+model AcessoLocalizacao {
+  usuarioId String   @map("usuario_id") @db.Uuid
+  casinhaId String   @map("casinha_id") @db.Uuid
+  dia       DateTime @db.Date
+
+  usuario Perfil  @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  casinha Casinha @relation(fields: [casinhaId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, casinhaId, dia])
+  @@index([dia])
+  @@map("acessos_localizacao")
+}
+
+/// Contadores diários dos limites anti-abuso (RN06).
+model LimiteUso {
+  usuarioId  String   @map("usuario_id") @db.Uuid
+  acao       String   @db.VarChar(40)
+  dia        DateTime @db.Date
+  quantidade Int      @default(0)
+
+  usuario Perfil @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@id([usuarioId, acao, dia])
+  @@index([dia])
+  @@map("limites_uso")
+}

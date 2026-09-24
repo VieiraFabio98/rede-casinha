@@ -1,0 +1,13 @@
+# Segredos: nunca versionar
+.env
+.env.*
+!.env.example
+secrets/
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Dependências e gerados
+node_modules/
+.DS_Store

@@ -1,0 +1,118 @@
+# 01 — Visão geral: Rede Casinha
+
+> Nome provisório. Documento vivo — atualize quando uma decisão mudar.
+
+## Premissas deste projeto
+
+| Tema | Decisão |
+|---|---|
+| Plataforma inicial | **Somente Android** (Google Play). iOS fica para a Fase 3. |
+| Stack | **React Native com Expo** (TypeScript). |
+| Equipe | **1 pessoa** (fundador), sem ONG parceira no lançamento. |
+| Abrangência | App aberto para o Brasil todo; os primeiros dados vêm da cidade do fundador. |
+| Login | Visitante só **vê** o mapa. Reportar, cadastrar e adotar exigem login (Google ou código por e-mail). |
+| Verificação | Usuário "verificado" (que vê localização exata) é promovido **manualmente por um moderador**. No início, o único moderador é o fundador. |
+| QR code | Fora do MVP. Planejado para a Fase 2. |
+| Orçamento | Zero. Único custo obrigatório: **US$ 25 (taxa única)** da conta Google Play. |
+
+## Problema
+
+Casinhas comunitárias para cães e gatos de rua são mantidas por pessoas que não se conhecem e se coordenam por grupos de WhatsApp, Instagram e boca a boca. O resultado:
+
+1. **Informação se perde.** "A casinha da praça está sem água" some no meio de 300 mensagens do grupo.
+2. **Esforço duplicado e buracos.** Duas pessoas levam ração para a mesma casinha no mesmo dia enquanto outra, a 2 quarteirões, fica uma semana vazia.
+3. **Ninguém sabe onde estão as casinhas.** Não existe um mapa. Quem quer ajudar não sabe por onde começar.
+4. **Sem histórico.** Não dá para saber quando a casinha foi abastecida pela última vez nem quem cuida dela.
+5. **Dependência de uma pessoa.** Quando a protetora que cuida de uma casinha adoece ou viaja, ninguém fica sabendo.
+
+## Objetivo
+
+Ser o **mapa de referência das casinhas comunitárias do Brasil**, mostrando em tempo quase real **o que cada uma está precisando** e permitindo que qualquer pessoa ajude em poucos toques, mesmo com internet ruim.
+
+Objetivo do MVP, bem mais estreito: **provar que a comunidade de uma cidade mantém o status das casinhas atualizado pelo app**, em vez de só pelo WhatsApp.
+
+## Público-alvo
+
+| Segmento | Papel no app | Quando entra |
+|---|---|---|
+| Protetores independentes | Cadastram, adotam e atualizam casinhas. São o núcleo. | MVP |
+| Vizinhos / ajudantes eventuais | Veem o que falta e resolvem ("levei água"). | MVP |
+| ONGs de proteção animal | Coordenam várias casinhas e voluntários. | Fase 2–3 |
+| Prefeituras (bem-estar animal, zoonoses) | Consomem dados agregados e apoiam com insumos. | Fase 3 |
+
+## Personas
+
+### Dona Marta — protetora independente
+- 58 anos. Cuida de 6 casinhas no bairro há 8 anos e gasta do próprio bolso.
+- Celular Android de entrada, plano pré-pago e pouco espaço livre. Usa WhatsApp o dia inteiro.
+- **Dor:** carrega tudo sozinha e ninguém a ajuda de forma organizada.
+- **Quer:** marcar rápido "abasteci" e pedir ajuda quando não consegue ir.
+- **Implicação no design:** fonte grande, poucos passos, funcionar offline, app leve.
+
+### Lucas — vizinho que quer ajudar
+- 27 anos. Passa por uma casinha todo dia no caminho do trabalho.
+- **Dor:** quer ajudar, mas não sabe se falta algo nem se "pode mexer".
+- **Quer:** abrir o app, ver "falta água aqui" e resolver em 2 minutos.
+- **Implicação no design:** o mapa já abre na localização dele; ação principal em 1 toque.
+
+### Carla — coordenadora de grupo de protetores
+- 41 anos. Administra um grupo de WhatsApp com 200 protetores da cidade.
+- **Dor:** organiza escala de ração em planilha e mensagens, e ninguém atualiza.
+- **Quer:** uma visão geral da cidade para direcionar voluntários.
+- **Implicação no design:** status agregado por região e link fácil de compartilhar no WhatsApp (Fase 2).
+
+### Rafael — servidor da prefeitura (futuro)
+- Trabalha no departamento de bem-estar animal.
+- **Quer:** saber onde há concentração de animais e casinhas para planejar castração e doação de ração.
+- **Implicação:** dados abertos e agregados, sem localização exata (Fase 3).
+
+### Anti-persona — pessoa mal-intencionada
+- Quer achar casinhas para envenenar animais, destruir abrigos ou "denunciar" protetores.
+- **Implicação:** a localização exata **nunca** é pública. Ver [06-riscos.md](06-riscos.md).
+
+## Proposta de valor
+
+> **"Veja o que a casinha perto de você precisa e resolva em 2 minutos."**
+
+- **Para protetores:** divide o trabalho, registra histórico e recebe ajuda sem precisar pedir em 5 grupos.
+- **Para vizinhos:** um jeito concreto e rápido de ajudar, sem compromisso.
+- **Para a causa:** um mapa real das casinhas do país, que hoje não existe.
+
+Diferenciais em relação ao WhatsApp: **status visual por casinha**, **histórico**, **funciona offline** e **localização protegida**.
+
+## Status no mapa
+
+| Cor | Status | Significado |
+|---|---|---|
+| 🟢 Verde | `ok` | Nenhuma necessidade aberta e alguém passou nos últimos 7 dias. |
+| 🟡 Amarelo | `atencao` | Existe pelo menos 1 necessidade aberta. |
+| 🔴 Vermelho | `urgente` | Existe necessidade marcada como urgente, ou água/ração em aberto há mais de 48 h. |
+| ⚪ Cinza | `sem_noticias` | Ninguém atualizou há mais de 7 dias. **Falta de dado não é "ok".** |
+
+As regras completas estão em [02-requisitos.md](02-requisitos.md#regras-de-negócio).
+
+## Métricas de sucesso
+
+**Métrica norte:** **necessidades atendidas por semana**. Ela captura o valor real, que é animal com água e comida.
+
+| Métrica | Como medir | Meta aos 3 meses do lançamento (cidade piloto) |
+|---|---|---|
+| Necessidades atendidas por semana | `necessidades` com status `atendida` na semana | ≥ 15/semana |
+| Tempo mediano entre reporte e atendimento | mediana de `atendida_em - criada_em` | < 48 h |
+| Casinhas ativas | casinhas com ≥ 1 atividade nos últimos 30 dias | ≥ 30 |
+| % de casinhas adotadas | casinhas com ≥ 1 adotante ativo / casinhas ativas | ≥ 40% |
+| % do mapa em cinza | casinhas `sem_noticias` / casinhas ativas | < 30% |
+| Contribuidores ativos por mês | usuários com ≥ 1 ação no mês | ≥ 40 |
+| Retenção de contribuidores (M1) | % dos que contribuíram no mês N e voltam no mês N+1 | ≥ 35% |
+| Qualidade | denúncias procedentes / total de casinhas | < 5% |
+| Estabilidade | sessões sem crash (Sentry) | ≥ 99,5% |
+
+**Critério para continuar investindo depois do piloto:** se em 3 meses a métrica norte ficar abaixo de 5/semana, entreviste 10 protetores antes de escrever mais código. O problema provavelmente é adoção, não funcionalidade.
+
+## Fora de escopo (por enquanto)
+
+- Adoção de **animais** (existem apps para isso). Aqui "adotar" é adotar a **casinha**.
+- Cadastro individual de animais.
+- Doações em dinheiro dentro do app.
+- Chat entre usuários.
+- iOS e versão web completa.

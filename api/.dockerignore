@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+test
+src/generated
+.env
+.env.*
+*.md

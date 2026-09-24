@@ -1,0 +1,57 @@
+// Todos os textos visíveis do app ficam aqui (RNF11).
+export const textos = {
+  app: {
+    nome: 'Rede Casinha',
+  },
+  abas: {
+    mapa: 'Mapa',
+    minhas: 'Minhas casinhas',
+    perfil: 'Perfil',
+  },
+  emConstrucao: 'Em construção',
+  login: {
+    titulo: 'Entre para ajudar',
+    subtitulo: 'Para reportar o que falta, cadastrar ou adotar uma casinha, entre com sua conta.',
+    google: 'Entrar com Google',
+    email: 'Entrar com e-mail',
+    outrasFormas: 'Outras formas de entrar',
+    campoEmail: 'Seu e-mail',
+    enviarCodigo: 'Enviar código',
+    codigoEnviado: (email: string) => `Enviamos um código de 6 números para ${email}.`,
+    campoCodigo: 'Código de 6 números',
+    confirmar: 'Entrar',
+    reenviar: 'Reenviar código',
+    reenviarEm: (segundos: number) => `Reenviar código em ${segundos}s`,
+    trocarEmail: 'Usar outro e-mail',
+    campoSenha: 'Senha',
+    entrarComSenha: 'Entrar com senha',
+    voltar: 'Voltar',
+    erroGoogle: 'Não foi possível entrar com o Google. Tente de novo.',
+    semPlayServices: 'Atualize o Google Play Services para entrar com o Google.',
+  },
+  cadastro: {
+    titulo: 'Só mais um passo',
+    subtitulo: 'Escolha como você vai aparecer para a comunidade.',
+    campoApelido: 'Apelido público',
+    dicaApelido:
+      'De 3 a 30 caracteres. Pode ser seu nome ou um apelido. Não use e-mail ou telefone.',
+    maiorDeIdade: 'Tenho 18 anos ou mais',
+    aceitoTermos: 'Li e aceito os termos de uso e a política de privacidade',
+    verTermos: 'Ler os termos de uso',
+    verPrivacidade: 'Ler a política de privacidade',
+    concluir: 'Concluir cadastro',
+    sair: 'Sair e usar outra conta',
+    apelidoInvalido: 'Use de 3 a 30 letras, números, espaço, _ . ou -.',
+  },
+  perfil: {
+    visitante: 'Você está navegando como visitante.',
+    entrar: 'Entrar',
+    sair: 'Sair da conta',
+    nivel: {
+      colaborador: 'Colaborador',
+      verificado: 'Verificado',
+      moderador: 'Moderador',
+      admin: 'Administrador',
+    },
+  },
+} as const;

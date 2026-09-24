@@ -1,0 +1,29 @@
+name: rede-casinha
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: rede-casinha-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rede}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rede_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-rede_casinha}
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      # Só localhost: o banco não fica exposto na rede.
+      - '127.0.0.1:${POSTGRES_PORT:-5433}:5432'
+    volumes:
+      # A partir do Postgres 18 o volume é montado em /var/lib/postgresql (não mais /data).
+      - db_data:/var/lib/postgresql
+      # Scripts .sql/.sh rodados só na primeira inicialização do volume.
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db_data:

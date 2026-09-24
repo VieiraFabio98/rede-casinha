@@ -1,0 +1,11 @@
+node_modules
+dist
+coverage
+
+# Variáveis de ambiente (só o exemplo é versionado)
+.env
+.env.*
+!.env.example
+
+# Client gerado pelo Prisma (npm install roda o prisma generate)
+/src/generated/prisma
