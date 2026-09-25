@@ -107,17 +107,18 @@ O **teste fechado de 14 dias com 12 testadores** é exigido de contas pessoais n
   - [x] Rate limit por IP e por e-mail nas rotas de auth (`@nestjs/throttler`). (120/min geral e 10/min nas rotas `/auth`, verificado manualmente; desligado nos testes. Em produção, `CONFIAR_PROXY=true` atrás do Caddy.)
   - [x] App: `@react-native-google-signin/google-signin`; telas de e-mail e de código; tokens no `expo-secure-store`; cliente HTTP que renova o token sozinho ao receber 401. (Uma renovação por vez; sem internet, o app mantém a sessão e o último perfil salvo. Typecheck/lint ok; **não testado em aparelho**.)
   - [x] API `POST /me/cadastro` (DTO com class-validator) + tela de apelido, checkbox de 18 anos e aceite de termos com link. (No app, a validação usa a mesma regex da API, sem zod; o link dos termos aparece quando `EXPO_PUBLIC_SITE_URL` existir — T0.8.)
-  - [x] Guarda de rotas: visitante vê o mapa; ações de escrita abrem a tela "Entre para ajudar". (`useExigirLogin()`; cadastro pendente leva à tela de cadastro via `Stack.Protected`.)
-  - **Pendente para concluir:** testar os logins (Google e código) num aparelho real, o que depende do dev build da T0.2; e criar a conta no Resend para envio real de e-mails (`EMAIL_DRIVER=resend`).
+  - [x] Guarda de rotas: ~~visitante vê o mapa; ações de escrita abrem a tela "Entre para ajudar"~~ → **todo o app exige login** ([D01](01-visao-geral.md#d01--mapa-só-com-login-2026-09-25)). (`Stack.Protected` por estado da sessão: sem sessão só a tela de entrada, cadastro pendente só a de cadastro, logado as abas. `useExigirLogin()` removido.)
+  - **Pendente para concluir:** testar o login com Google num aparelho real (o login por código + cadastro já passou no aparelho em 25/09/2026, com `EMAIL_DRIVER=console`); e criar a conta no Resend para envio real de e-mails (`EMAIL_DRIVER=resend`).
 
-- [ ] **T0.6 — Mapa base**
+- [x] **T0.6 — Mapa base**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T0.2
   - Pronto quando: o mapa do OpenFreeMap renderiza fluido num Android de entrada, centraliza na localização do usuário (com permissão) e cai para a última região salva (sem permissão).
-  - [ ] Instalar `@maplibre/maplibre-react-native` + config plugin e refazer o dev build.
-  - [ ] Estilo `https://tiles.openfreemap.org/styles/liberty` (ou `positron`, mais limpo), com a URL centralizada em uma constante.
-  - [ ] `expo-location`: pedir permissão **só ao tocar em "minha localização"** ou no primeiro uso, com explicação antes do diálogo do sistema.
-  - [ ] Salvar a última câmera (centro e zoom) no MMKV.
-  - [ ] Atribuição OpenStreetMap/OpenFreeMap visível (obrigatória pela licença).
+  - [x] Instalar `@maplibre/maplibre-react-native` + config plugin e refazer o dev build. (MapLibre RN 11 — API nova: `Map`, `Camera` com `initialViewState`, `NativeUserLocation`. `prebuild --clean` + `npm run android:apk` compilando.)
+  - [x] Estilo `https://tiles.openfreemap.org/styles/liberty` (ou `positron`, mais limpo), com a URL centralizada em uma constante. (`liberty` em `src/map/estilo.ts`, junto com a região padrão e os zooms.)
+  - [x] `expo-location`: pedir permissão **só ao tocar em "minha localização"** ou no primeiro uso, com explicação antes do diálogo do sistema. (Explicação num `Alert` antes do diálogo; no primeiro uso pergunta uma vez só, depois só pelo botão; negada de vez → oferece abrir as configurações. Com permissão, abre na posição recente do sistema e refina com o GPS, sem puxar a câmera se a pessoa já mexeu no mapa.)
+  - [x] Salvar a última câmera (centro e zoom) no MMKV. (`react-native-mmkv` 4 em `src/offline/armazenamento-rapido.ts`, instância que o cache do TanStack Query vai reaproveitar.)
+  - [x] Atribuição OpenStreetMap/OpenFreeMap visível (obrigatória pela licença). (Texto fixo no canto do mapa; tocar abre os créditos completos do estilo. Logo e botão "i" nativos desligados.)
+  - [x] Validado em aparelho real (Redmi Note 13, Snapdragon 685, Android 15) em 25/09/2026: 60 fps estáveis ao arrastar e dar zoom (0 quadros acima de 33 ms, medido no SurfaceFlinger); no primeiro uso abre na região padrão, explica e só então mostra o diálogo do sistema; com permissão centraliza no usuário (zoom 15); sem permissão reabre exatamente na última região, sem perguntar de novo; negada → alerta com "Abrir configurações", que leva à tela do app; liberada de novo → o botão centraliza. Créditos do mapa abrem ao tocar na atribuição.
 
 - [ ] **T0.7 — Monitoramento de erros e analytics**
   - Prioridade: **média** · Esforço: **P** · Depende de: T0.2
@@ -154,7 +155,7 @@ O **teste fechado de 14 dias com 12 testadores** é exigido de contas pessoais n
   - Pronto quando: a API responde em HTTPS num domínio público (`GET /saude`); um deploy novo sai com um comando; o backup diário criptografado roda e já foi **restaurado com sucesso** num banco local.
   - [ ] Escolher a VPS. Recomendado: **Oracle Cloud Always Free** (ARM, grátis; exige cartão só para verificação). Alternativa paga barata: VPS de ~US$ 5/mês. Região: São Paulo.
   - [ ] Domínio (recomendado `.com.br`, ~R$ 40/ano) ou subdomínio gratuito no início; DNS apontando para a VPS.
-  - [ ] `docker-compose.prod.yml`: API + Postgres (volume persistente, porta **não** exposta) + **Caddy** (HTTPS automático via Let's Encrypt).
+  - [ ] `docker-compose.prod.yml`: API + Postgres (volume persistente, porta **não** exposta) + **Caddy** (HTTPS automático via Let's Encrypt, com `encode zstd gzip`: a busca por área depende da compressão para ficar abaixo de 20 KB).
   - [ ] Segredos só no `.env` do servidor (permissão 600), nunca no repositório. Firewall liberando só 22, 80 e 443; SSH só com chave.
   - [ ] Deploy: GitHub Actions gera a imagem da API (GHCR) → no servidor, `docker compose pull && up -d`; `prisma migrate deploy` roda antes de a API subir.
   - [ ] `scripts/backup.sh`: `pg_dump` diário → criptografar com `age` → enviar para fora da VPS (ex.: Google Drive via `rclone`); manter 30 dias. Testar a restauração.
@@ -163,46 +164,49 @@ O **teste fechado de 14 dias com 12 testadores** é exigido de contas pessoais n
 
 ## Fase 1 — MVP (~4 a 6 semanas)
 
-- [ ] **T1.1 — Endpoints de leitura e localização protegida**
+- [x] **T1.1 — Endpoints de leitura e localização protegida**
   - Prioridade: **alta** · Esforço: **G** · Depende de: T0.4, T0.5
-  - Pronto quando: `GET /casinhas` e `GET /casinhas/:id` devolvem a exata só para quem pode (testes e2e para cada nível da matriz); a resposta de uma área com 200 casinhas tem < 20 KB.
-  - [ ] Serviço `podeVerExata(usuario, casinha)` no módulo `localizacao` (criador, adotante, verificado dentro do limite, moderador).
-  - [ ] `gerarLocalizacaoPublica(lat, lng)`: ponto de destino esférico com distância de 150–400 m e direção aleatórias. Teste unitário: 10 mil sorteios, todos entre 150 e 400 m (haversine).
-  - [ ] `GET /casinhas?minLat&minLng&maxLat&maxLng`: filtro `BETWEEN` nas coordenadas públicas (índice), limite de 1.000, colunas mínimas; troca pela exata só nas casinhas permitidas ao usuário.
-  - [ ] `GET /casinhas/:id` com necessidades abertas, adotantes, 30 atividades e fotos (só logado); registro em `AcessoLocalizacao`.
-  - [ ] `GET /me/casinhas`, `GET /me`.
-  - [ ] Script `npm run gen:api` no app: OpenAPI da API → `app/src/api/schema.d.ts` (`openapi-typescript`); hooks tipados (`useCasinhasNaArea`, `useCasinha`).
-  - [ ] Testes e2e: visitante, colaborador, adotante, verificado (inclusive a 51ª casinha do dia) e moderador.
+  - Pronto quando: `GET /casinhas` e `GET /casinhas/:id` devolvem a exata só para quem pode (testes e2e para cada nível da matriz); a resposta de uma área com 200 casinhas tem < 20 KB. (Comprimida: ~41 KB sem compressão; em produção o Caddy comprime, ver T0.11.)
+  - [x] Serviço `podeVerExata(usuario, casinha)` no módulo `localizacao` (criador, adotante, verificado dentro do limite, moderador). (Regra pura `acessoAExata` + `LocalizacaoService` com `exatasParaLista` e `exataParaDetalhe`. Na lista, o verificado só vê a exata das casinhas que já abriu hoje: arrastar o mapa não gasta cota nem revela exatas em massa. A cota trava o perfil (`FOR UPDATE`) para pedidos simultâneos não passarem de 50. O dia dos limites vira à meia-noite de Brasília (`diaAtual`). O teste de arquitetura agora também barra `localizacao: true` em include/select fora do módulo.)
+  - [x] `gerarLocalizacaoPublica(lat, lng)`: ponto de destino esférico com distância de 150–400 m e direção aleatórias. Teste unitário: 10 mil sorteios, todos entre 150 e 400 m (haversine). (Sorteio com `crypto.randomInt`; o seed e as fábricas de teste usam a mesma função.)
+  - [x] `GET /casinhas?minLat&minLng&maxLat&maxLng` (exige login, sem `@Publico()`): filtro `BETWEEN` nas coordenadas públicas (índice), limite de 1.000, colunas mínimas; troca pela exata só nas casinhas permitidas ao usuário. (Resposta `{ casinhas, truncado }`; coordenadas com 6 casas decimais; sem inativas nem ocultadas.)
+  - [x] `GET /casinhas/:id` com necessidades abertas, adotantes, 30 atividades e ~~fotos~~ (só logado); registro em `AcessoLocalizacao`. (Com `minhasPermissoes`. Ocultada por denúncia: só moderador, criador e adotantes veem; inativa: só moderador. **Fotos ficam para a T1.5**, que cria o armazenamento e as URLs assinadas.)
+  - [x] `GET /me/casinhas`, `GET /me`. (`/me/casinhas` com `souCriador`/`souAdotante` e a exata. O `GET /me` já existia desde a T0.5; as contagens de contribuições ficam para quando existirem contribuições, T1.7.)
+  - [x] Script `npm run gen:api` no app: OpenAPI da API → `app/src/api/schema.d.ts` (`openapi-typescript`); hooks tipados (`useCasinhasNaArea`, `useCasinha`). (`openapi-typescript` roda via `npx` fixado na 7.13.0: ele ainda exige TypeScript 5 e o app usa o 6. `@tanstack/react-query` instalado, com `useMinhasCasinhas` também; o cache é limpo ao sair da conta. `src/api/tipos.ts` agora deriva do schema gerado.)
+  - [x] Testes e2e: visitante (401 em todas as leituras de casinha), colaborador, adotante, verificado (inclusive a 51ª casinha do dia) e moderador. (27 testes em `test/casinhas.e2e-spec.ts`, incluindo cadastro pendente, conta bloqueada, validação da área, limite de 1.000, tamanho da resposta e 60 pedidos simultâneos do verificado.)
 
-- [ ] **T1.2 — Tela do mapa com casinhas**
+- [x] **T1.2 — Tela do mapa com casinhas**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T0.6, T1.1
   - Pronto quando: ao mover o mapa, as casinhas carregam por área (debounce de 400 ms); os clusters mostram a pior cor; as áreas aproximadas aparecem como círculos de 500 m; os filtros funcionam; o mapa continua visível offline com os dados em cache.
-  - [ ] `ShapeSource` com `cluster` + `CircleLayer`/`SymbolLayer`; a cor do cluster vem de `clusterProperties` (máximo de severidade).
-  - [ ] Pino para casinha com exata; círculo translúcido de 500 m para aproximada (visível em zoom ≥ 14).
-  - [ ] Chave de cache da área arredondada a uma grade de ~2 km; persistir com o persister do TanStack Query.
-  - [ ] Legenda (cor + ícone + texto) e filtros "Só urgentes" e "Por tipo".
-  - [ ] Banner "Offline: mostrando dados de <hora>" e contador de pendências da outbox.
-  - [ ] Botão flutuante "+ Casinha" (pede login se for visitante).
+  - [x] `ShapeSource` com `cluster` + `CircleLayer`/`SymbolLayer`; a cor do cluster vem de `clusterProperties` (máximo de severidade). (MapLibre RN 11: `GeoJSONSource` + `Layer` em `src/map/camada-casinhas.tsx`. Gravidade: ok < sem notícias < atenção < urgente — cinza pesa mais que verde. Grupos só até o zoom 13; tocar num grupo aproxima até ele se abrir.)
+  - [x] Pino para casinha com exata; círculo translúcido de 500 m para aproximada (visível em zoom ≥ 14). (Pino com cor + símbolo por status; a aproximada usa um **selo redondo**, sem ponta, para não sugerir um ponto exato. O raio do círculo é calculado em metros reais pela latitude de cada casinha. PNGs em `assets/images/mapa/`.)
+  - [x] Chave de cache da área arredondada a uma grade de ~2 km; persistir com o persister do TanStack Query. Ao sair da conta, apagar também o cache persistido (ele guarda exatas do usuário anterior; o cache em memória já é limpo desde a T1.1). (Persister do TanStack no MMKV, 7 dias, só as consultas de casinhas. Abaixo do zoom 9 o mapa não busca e pede para aproximar.)
+  - [x] Legenda (cor + ícone + texto) e filtros "Só urgentes" e "Por tipo". (Chips roláveis no topo; os filtros valem sobre as casinhas já carregadas. Por tipo: mostra quem precisa de pelo menos um dos tipos marcados.)
+  - [x] Banner "Offline: mostrando dados de <hora>" e ~~contador de pendências da outbox~~. (Também avisa "aproxime o mapa", "muitas casinhas nesta área", erro com "Tentar de novo" e filtro sem resultado. **O contador da outbox fica para a T1.4**, que cria a outbox.)
+  - [x] Botão flutuante "+ Casinha". (Por enquanto avisa que o cadastro chega em breve; a tela é a T1.6. Tocar numa casinha abre um cartão com status e necessidades; o detalhe completo é a T1.3.)
+  - [x] Validado no aparelho (Redmi Note 13) em 25/09/2026, com as 30 casinhas do seed perto do usuário: grupos coloridos pela pior situação e que se abrem ao toque; pinos (exata) e áreas de 500 m (aproximada); cartão ao tocar numa casinha e fechamento ao tocar no mapa; legenda; filtro "Só urgentes"; aviso "Aproxime o mapa" abaixo do zoom 9; e, com a API fora do ar, o app fechado e reaberto mostrou as casinhas do cache com "Offline: mostrando dados de <hora>".
 
-- [ ] **T1.3 — Detalhe da casinha**
+- [x] **T1.3 — Detalhe da casinha**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T1.1
-  - Pronto quando: a tela mostra status, necessidades abertas com botão "Abasteci"/"Atendi" em 1 toque, fotos (miniatura → tela cheia), adotantes e histórico; funciona offline com o último dado carregado.
-  - [ ] Layout com a ação principal no rodapé (alcance do polegar).
-  - [ ] Carrossel de fotos com `expo-image` + URLs assinadas devolvidas pela API.
-  - [ ] Histórico com textos humanos ("Marta abasteceu ração · há 3 h").
-  - [ ] Botões condicionais conforme `minhas_permissoes` (editar, adotar, denunciar, pedir desativação).
-  - [ ] "Como chegar" (abre o app de mapas com a coordenada) **só se `exata = true`**.
+  - Pronto quando: a tela mostra status, necessidades abertas com botão "Abasteci"/"Atendi" em 1 toque, fotos (miniatura → tela cheia), adotantes e histórico; funciona offline com o último dado carregado. (Tela `src/app/casinha/[id].tsx`, aberta pelo "Ver detalhes" do cartão do mapa. Os botões de ação existem, mas avisam "chega na próxima versão" até a task de cada um: T1.7 para "Abasteci"/"Atendi"/"O que está faltando?"/"Passei aqui", T1.9 para adotar, T1.10 para denunciar e pedir desativação.)
+  - [x] Layout com a ação principal no rodapé (alcance do polegar). ("O que está faltando?" + "Passei aqui, tudo ok".)
+  - [ ] Carrossel de fotos com `expo-image` + URLs assinadas devolvidas pela API. **Fica para a T1.5**, que cria o armazenamento de fotos e as URLs assinadas.
+  - [x] Histórico com textos humanos ("Marta abasteceu ração · há 3 h"). (A API passou a devolver o tipo da necessidade de cada atividade; frases em `src/domain/historico.ts`; conta excluída aparece como "Usuário removido".)
+  - [x] Botões condicionais conforme `minhas_permissoes` (editar, adotar, denunciar, pedir desativação).
+  - [x] "Como chegar" (abre o app de mapas com a coordenada) **só se `exata = true`**. (URI `geo:`; o Android oferece Maps/Waze.)
+  - [x] Validado no aparelho em 25/09/2026: cartão do mapa → "Ver detalhes"; status, local exato, necessidade com "Abasteci", adotantes, histórico e ações conforme permissão; "Como chegar" abriu o seletor Maps/Waze; com a API fora do ar, o app reaberto mostrou o detalhe do cache com "Offline: mostrando dados de 25/09, 16:31".
 
-- [ ] **T1.4 — Outbox offline e sync worker**
+- [x] **T1.4 — Outbox offline e sync worker**
   - Prioridade: **alta** · Esforço: **G** · Depende de: T0.2
   - Pronto quando: com o modo avião ligado, 10 operações enfileiradas sobrevivem ao fechamento forçado do app e são enviadas em ordem quando a rede volta; reenviar a mesma operação não gera duplicata no servidor; um erro 4xx não trava a fila.
-  - [ ] Schema `outbox` no `expo-sqlite` com migration local versionada.
-  - [ ] `enfileirar(operacao, payload, fotos)` gerando UUIDs com `expo-crypto`.
-  - [ ] Worker com lock (só um rodando), ordem FIFO, backoff exponencial (máx. 30 min) e classificação de erros (rede/5xx vs 4xx).
-  - [ ] Gatilhos: enfileirar, NetInfo online, `AppState` active e intervalo de 2 min.
-  - [ ] Integração com a UI otimista (`setQueryData`) e invalidação depois do sucesso.
-  - [ ] Tela "Pendências": lista, "tentar agora" e descartar itens com erro permanente.
-  - [ ] Testes Jest do worker com a API simulada (falha de rede, 4xx, duplicata).
+  - [x] Validado no aparelho em 25/09/2026, junto com a T1.7: com a API inacessível, 8 check-ins + 2 atendimentos entraram na fila, o app foi fechado à força e reaberto com as 10 ações guardadas; com a API de volta, chegaram na ordem em que foram feitas e sem duplicata. No teste apareceu um defeito, corrigido: voltar ao app ou a rede voltar agora ignoram a espera do backoff (o intervalo de 2 min continua respeitando). O "4xx não trava a fila" é coberto pelos testes Jest.
+  - [x] Schema `outbox` no `expo-sqlite` com migration local versionada. (`PRAGMA user_version`; colunas extras `usuario_id`, `metodo` e `caminho`: a fila só envia as operações de quem está logado e guarda a requisição pronta.)
+  - [x] `enfileirar(operacao, payload, fotos)` gerando UUIDs com `expo-crypto`. (`novoId()` + `enfileirar({ id, operacao, metodo, caminho, corpo }, otimista)` em `src/offline/outbox/fila.ts`. A coluna `fotos` já existe; copiar e subir as fotos é da T1.5.)
+  - [x] Worker com lock (só um rodando), ordem FIFO, backoff exponencial (máx. 30 min) e classificação de erros (rede/5xx vs 4xx). (`worker.ts`, sem dependência de React Native. Temporários: rede, 5xx, 401, 408, 429 e erros inesperados; o resto dos 4xx é permanente. Erro temporário para a fila inteira, para manter a ordem.)
+  - [x] Gatilhos: enfileirar, NetInfo online, `AppState` active e intervalo de 2 min. (Também ao entrar na conta e no fim de cada backoff.)
+  - [x] Integração com a UI otimista (`setQueryData`) e invalidação depois do sucesso. (`enfileirar` recebe a função otimista; depois de uma rodada com envios, invalida as consultas de casinhas. O primeiro uso real é na T1.7.)
+  - [x] Tela "Pendências": lista, "tentar agora" e descartar itens com erro permanente. (`src/app/pendencias.tsx`; o mapa mostra "N ações aguardando envio · Ver", o contador que ficou pendente na T1.2.)
+  - [x] Testes Jest do worker com a API simulada (falha de rede, 4xx, duplicata). (13 testes em `worker.test.ts`: ordem, backoff, temporários, 4xx sem travar, id repetido, lock, envio interrompido e conta errada. `npm test` agora faz parte do `npm run check` do app.)
 
 - [ ] **T1.5 — Fotos: captura, compressão e upload**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T0.3, T1.4
@@ -225,22 +229,23 @@ O **teste fechado de 14 dias com 12 testadores** é exigido de contas pessoais n
   - [ ] O criador vira adotante automaticamente.
   - [ ] Evento `casinha_cadastrada` no PostHog.
 
-- [ ] **T1.7 — Necessidades, atendimentos e check-in**
+- [x] **T1.7 — Necessidades, atendimentos e check-in**
   - Prioridade: **alta** · Esforço: **G** · Depende de: T1.3, T1.4
   - Pronto quando: todos os fluxos (reportar, reconfirmar, atender, contestar, check-in) funcionam online e offline; a regra "um tipo aberto por casinha" vale; `ja_atendida` mostra a mensagem amigável.
-  - [ ] API `POST /necessidades`, `POST /necessidades/:id/reconfirmar`, `/atender`, `/contestar` e `POST /casinhas/:id/check-in` (idempotentes pelo id do celular, com `validado_local` calculado por haversine e sem expor coordenadas).
-  - [ ] Tela "O que está faltando?": grade de ícones grandes (ração, água, reforma, cobertas, limpeza, remédio, outro) + seletor de urgência + observação/foto opcionais.
-  - [ ] Botões de 1 toque no detalhe: "Abasteci", "Ainda precisa", "Passei aqui, tudo ok".
-  - [ ] Contestação visível por 24 h no item atendido.
-  - [ ] Testes e2e das regras RN02 e RN03.
+  - [x] API `POST /necessidades`, `POST /necessidades/:id/reconfirmar`, `/atender`, `/contestar` e `POST /casinhas/:id/check-in` (idempotentes pelo id do celular, com `validado_local` calculado por haversine e sem expor coordenadas). (Módulo `necessidades`. Cada ação trava a linha da casinha (`FOR UPDATE`), então ações simultâneas não se atropelam: 10 reportes simultâneos do mesmo tipo viram 1 reporte + 9 reconfirmações. Limite de 60 contribuições/dia (RN06) com 403 `limite_diario`, para a fila não insistir. `validado_local` no módulo `localizacao` (`estaPerto`, 100 m). Resposta `{ resultado, necessidadeId, status }`.)
+  - [x] Tela "O que está faltando?": grade de ícones grandes (ração, água, reforma, cobertas, limpeza, remédio, outro) + seletor de urgência + observação/foto opcionais. (Marca vários tipos de uma vez: um pedido por tipo. **A foto fica para a T1.5.**)
+  - [x] Botões de 1 toque no detalhe: "Abasteci", "Ainda precisa", "Passei aqui, tudo ok". (Pela outbox, com UI otimista no detalhe, no mapa e em "Minhas casinhas" e o selo "aguardando envio". `ja_atendida` mostra "Alguém já tinha atendido. Obrigado!", inclusive quando a ação offline chega depois.)
+  - [x] Contestação visível por 24 h no item atendido. (O detalhe traz `atendidasRecentemente`; seção "Resolvido há pouco" com "Não foi resolvido", que abre uma tela pedindo o que a pessoa viu.)
+  - [x] Testes e2e das regras RN02 e RN03. (18 testes em `test/necessidades.e2e-spec.ts`, com relógio controlado: prazos, 12 h entre reconfirmações, 24 h de contestação, `ja_atendida`, idempotência, concorrência, `validado_local` e limite diário.)
+  - [x] Validado no aparelho em 25/09/2026: "Ainda precisa", "Abasteci" (casinha fica verde e aparece "Resolvido há pouco"), "Não foi resolvido" (reabre e volta a urgente), "O que está faltando?" com 2 tipos e "Passei aqui". Offline: "Abasteci" na fila enquanto outra pessoa atendeu pelo servidor; ao chegar, o app mostrou "Alguém já tinha atendido. Obrigado!".
 
 - [ ] **T1.8 — Status e expiração automáticos**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T0.4, T1.7
   - Pronto quando: o status muda na hora a cada ação (transação) e com o tempo (jobs); testes simulando tempo cobrem os 4 status e todos os prazos de expiração.
-  - [ ] Serviço `recalcularStatus(casinhaId, tx)` implementando a RN01, chamado dentro da mesma transação de toda escrita que afeta a casinha.
+  - [x] Serviço `recalcularStatus(casinhaId, tx)` implementando a RN01, chamado dentro da mesma transação de toda escrita que afeta a casinha. (Feito na T1.7: `StatusService.recalcular` + regra pura `calcularStatus` com testes.)
   - [ ] Jobs com `@nestjs/schedule`: `@Cron` `expirar-necessidades` (a cada 15 min) e `recalcular-status` (a cada 1 h), idempotentes (rodar duas vezes não causa efeito extra).
-  - [ ] Função `prazoExpiracao(tipo)` com a tabela da RN02.
-  - [ ] Relógio injetável (`agora()`) para testar as transições por tempo sem esperar.
+  - [x] Função `prazoExpiracao(tipo)` com a tabela da RN02. (Feito na T1.7, em `modulos/status/regras.ts`.)
+  - [x] Relógio injetável (`agora()`) para testar as transições por tempo sem esperar. (Feito na T1.7: `Relogio` global; nos e2e, `RelogioDeTeste`.)
 
 - [ ] **T1.9 — Adoção e "Minhas casinhas"**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T1.1, T1.3
@@ -331,7 +336,7 @@ Se o prazo apertar, estes itens saem do MVP **sem comprometer o critério de pro
 
 - [ ] **T2.2 — Compartilhar casinha no WhatsApp**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T1.3
-  - Pronto quando: o botão "Compartilhar" gera um link que no WhatsApp mostra uma prévia (nome, status, foto); o link abre o app se instalado ou a página web com a área aproximada e o botão da loja.
+  - Pronto quando: o botão "Compartilhar" gera um link que no WhatsApp mostra uma prévia (nome, status, foto); o link abre o app se instalado ou a página web com nome, status e o botão da loja (sem mapa nem área, ver D01).
   - [ ] Rota da API `GET /c/:codigo` que devolve HTML com Open Graph (sem coordenadas exatas).
   - [ ] Android App Links (`assetlinks.json`) + rota no Expo Router.
   - [ ] Texto sugerido: "A casinha X está sem água! Pode ajudar? <link>".

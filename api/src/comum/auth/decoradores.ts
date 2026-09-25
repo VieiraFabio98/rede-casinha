@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext, SetMetadata } from '@nestjs/common';
 
-import type { NivelAcesso } from '../../generated/prisma/client.js';
+import type { NivelAcesso, Perfil } from '../../generated/prisma/client.js';
 import type { RequisicaoAutenticada, UsuarioAutenticado } from './tipos.js';
 
 export const CHAVE_PUBLICO = 'rota-publica';
@@ -19,4 +19,10 @@ export const Nivel = (nivel: NivelAcesso) => SetMetadata(CHAVE_NIVEL, nivel);
 export const UsuarioAtual = createParamDecorator(
   (_dado: unknown, contexto: ExecutionContext): UsuarioAutenticado | undefined =>
     contexto.switchToHttp().getRequest<RequisicaoAutenticada>().usuario,
+);
+
+/** Injeta o perfil carregado pelo guard. Só existe nas rotas com `@Nivel()`. */
+export const PerfilAtual = createParamDecorator(
+  (_dado: unknown, contexto: ExecutionContext): Perfil | undefined =>
+    contexto.switchToHttp().getRequest<RequisicaoAutenticada>().perfil,
 );

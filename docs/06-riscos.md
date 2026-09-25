@@ -8,7 +8,7 @@ Escala: **B** = baixa · **M** = média · **A** = alta.
 
 | # | Risco | Probabilidade | Impacto | Mitigação principal | Seção |
 |---|---|:-:|:-:|---|---|
-| R1 | Localização usada para maus-tratos ou vandalismo | M | **A** | Área aproximada de 500 m; exata só para adotante, verificado e moderador | [3](#3-segurança-dos-animais-localização) |
+| R1 | Localização usada para maus-tratos ou vandalismo | M | **A** | Mapa só com login; área aproximada de 500 m; exata só para adotante, verificado e moderador | [3](#3-segurança-dos-animais-localização) |
 | R2 | Vazamento ou uso indevido de dados pessoais (LGPD) | B | A | Minimização, autorização coberta por testes e2e, servidor em São Paulo | [1](#1-lgpd-e-privacidade) |
 | R3 | Status falso ("atendido" sem atender) deixa animal sem comida | M | A | Contestação 24 h, verde dura só 7 dias, expiração | [2](#2-moderação-conteúdo-falso-spam-e-duplicatas) |
 | R4 | Spam, casinhas falsas, duplicatas | A | M | Login, limites, checagem de 30 m, denúncias | [2](#2-moderação-conteúdo-falso-spam-e-duplicatas) |
@@ -96,16 +96,17 @@ Uma casinha é um objeto físico visível na rua. Quem percorre o bairro a pé v
 
 | Camada | Visitante | Colaborador | Adotante / criador | Verificado | Moderador |
 |---|---|---|---|---|---|
-| Área aproximada (círculo de 500 m) | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Área aproximada (círculo de 500 m) | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Fotos | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Localização exata + "Como chegar" | ❌ | ❌ | ✅ (só a dela) | ✅ (50/dia, auditado) | ✅ |
 
+0. **Mapa só com login** ([D01](01-visao-geral.md#d01--mapa-só-com-login-2026-09-25)). Nada de varredura anônima: toda consulta vem de uma conta com limites, rastro e que pode ser bloqueada.
 1. **Ponto público fixo com deslocamento de 150–400 m**, sorteado uma vez e armazenado. Nunca é recalculado por consulta, o que impede a triangulação por média.
 2. **A exata fica numa tabela separada, sem `select` direto.** Só sai por funções que checam a permissão. Há testes automatizados para cada nível.
 3. **Fotos sem EXIF** (reencodadas no celular) e **escondidas de visitantes**. Aviso para não fotografar fachadas nem placas.
 4. **Sem oráculos de distância:** `adotar_casinha` devolve só "ok" ou "não permitido"; `validado_local` nunca volta ao app. Tentativas de adoção são limitadas a 3/dia e a checagem de duplicata a 10/dia.
 5. **Verificação manual e revogável**, com limite diário de casinhas exatas e auditoria em `acessos_localizacao`. Consulta semanal: verificados com > 20 casinhas distintas por dia ou acessos fora da própria cidade.
-6. **Nada de "link com coordenada" no compartilhamento** (T2.2): a página pública mostra só a área aproximada.
+6. **Nada de "link com coordenada" no compartilhamento** (T2.2): a página pública não mostra mapa nem área, só nome, status e o botão da loja.
 7. **Casinha sensível (F2):** o moderador pode esconder do mapa público uma casinha que já sofreu ataque. Ela fica visível só para adotantes e moderadores.
 
 ### Quando algo acontece

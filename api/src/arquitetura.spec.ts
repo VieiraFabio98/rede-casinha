@@ -17,7 +17,8 @@ describe('regras de arquitetura', () => {
       .map((arquivo) => relative(RAIZ_SRC, arquivo))
       .filter((arquivo) => !arquivo.startsWith(join('modulos', 'localizacao')))
       .filter((arquivo) =>
-        /\bcasinhaLocalizacao\b|\bcasinhas_localizacao\b/.test(
+        // Também pega a relação `localizacao` num include/select do Prisma (`localizacao: true`).
+        /\bcasinhaLocalizacao\b|\bcasinhas_localizacao\b|\blocalizacao\s*:\s*(true|\{)/.test(
           readFileSync(join(RAIZ_SRC, arquivo), 'utf8'),
         ),
       );

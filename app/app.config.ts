@@ -25,6 +25,9 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    '@maplibre/maplibre-react-native',
+    // Só localização em primeiro plano (centralizar o mapa e, na T1.6, cadastrar casinha).
+    'expo-location',
     [
       'expo-splash-screen',
       {

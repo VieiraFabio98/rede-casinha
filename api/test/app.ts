@@ -2,6 +2,7 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module.js';
+import { Relogio } from '../src/comum/relogio.js';
 import { configurarApp } from '../src/configurar-app.js';
 import { EmailMemoria, EmailService } from '../src/infra/email/email.service.js';
 import { GoogleService, type IdentidadeGoogle } from '../src/modulos/auth/google.service.js';
@@ -27,10 +28,27 @@ class GoogleSimulado {
   }
 }
 
-export async function criarAppDeTeste(): Promise<{ app: INestApplication; emails: EmailMemoria }> {
+/** Relógio que o teste controla: começa na hora real e só anda com `avancar`. */
+export class RelogioDeTeste extends Relogio {
+  private atual = new Date();
+
+  agora(): Date {
+    return new Date(this.atual);
+  }
+
+  avancar(ms: number) {
+    this.atual = new Date(this.atual.getTime() + ms);
+  }
+}
+
+export async function criarAppDeTeste(
+  opcoes: { relogio?: Relogio } = {},
+): Promise<{ app: INestApplication; emails: EmailMemoria }> {
   const modulo = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(GoogleService)
     .useValue(new GoogleSimulado())
+    .overrideProvider(Relogio)
+    .useValue(opcoes.relogio ?? new Relogio())
     .compile();
   const app = modulo.createNestApplication();
   configurarApp(app);

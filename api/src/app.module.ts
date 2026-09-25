@@ -3,10 +3,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 
+import { RelogioModule } from './comum/relogio.js';
 import { esquemaAmbiente, type Ambiente } from './config/ambiente.js';
 import { EmailModule } from './infra/email/email.module.js';
 import { PrismaModule } from './infra/prisma/prisma.module.js';
 import { AuthModule } from './modulos/auth/auth.module.js';
+import { CasinhasModule } from './modulos/casinhas/casinhas.module.js';
+import { NecessidadesModule } from './modulos/necessidades/necessidades.module.js';
 import { MeModule } from './modulos/me/me.module.js';
 import { SaudeModule } from './modulos/saude/saude.module.js';
 
@@ -21,10 +24,13 @@ import { SaudeModule } from './modulos/saude/saude.module.js';
         skipIf: () => config.get('NODE_ENV', { infer: true }) === 'test',
       }),
     }),
+    RelogioModule,
     PrismaModule,
     EmailModule,
     AuthModule,
     MeModule,
+    CasinhasModule,
+    NecessidadesModule,
     SaudeModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

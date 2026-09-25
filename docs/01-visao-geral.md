@@ -10,7 +10,7 @@
 | Stack | **React Native com Expo** (TypeScript). |
 | Equipe | **1 pessoa** (fundador), sem ONG parceira no lançamento. |
 | Abrangência | App aberto para o Brasil todo; os primeiros dados vêm da cidade do fundador. |
-| Login | Visitante só **vê** o mapa. Reportar, cadastrar e adotar exigem login (Google ou código por e-mail). |
+| Login | **Obrigatório para tudo, inclusive para ver o mapa** (Google ou código por e-mail). Sem login, só a tela de entrada. Ver [D01](#d01--mapa-só-com-login-2026-09-25). |
 | Verificação | Usuário "verificado" (que vê localização exata) é promovido **manualmente por um moderador**. No início, o único moderador é o fundador. |
 | QR code | Fora do MVP. Planejado para a Fase 2. |
 | Orçamento | Zero. Único custo obrigatório: **US$ 25 (taxa única)** da conta Google Play. |
@@ -68,7 +68,7 @@ Objetivo do MVP, bem mais estreito: **provar que a comunidade de uma cidade mant
 
 ### Anti-persona — pessoa mal-intencionada
 - Quer achar casinhas para envenenar animais, destruir abrigos ou "denunciar" protetores.
-- **Implicação:** a localização exata **nunca** é pública. Ver [06-riscos.md](06-riscos.md).
+- **Implicação:** a localização exata **nunca** é pública e o mapa só abre com login. Ver [06-riscos.md](06-riscos.md) e [D01](#d01--mapa-só-com-login-2026-09-25).
 
 ## Proposta de valor
 
@@ -116,3 +116,19 @@ As regras completas estão em [02-requisitos.md](02-requisitos.md#regras-de-neg�
 - Doações em dinheiro dentro do app.
 - Chat entre usuários.
 - iOS e versão web completa.
+
+## Registro de decisões
+
+Decisões que mudaram o plano original. A mais recente fica no fim.
+
+### D01 — Mapa só com login (2026-09-25)
+
+- **Antes:** o visitante sem conta via o mapa com a área aproximada e o status das casinhas. O login só era pedido para reportar, cadastrar e adotar.
+- **Agora:** todo o app exige login. Sem sessão, a única tela é a de entrada; com cadastro pendente, só a de cadastro.
+- **Por quê:** o mapa anônimo deixava a anti-persona varrer as casinhas de uma cidade inteira sem se identificar, por script ou por muitos aparelhos, e sem ter o que bloquear. Com login, toda consulta fica ligada a uma conta (e-mail ou Google confirmado, 18+ declarado) que tem limites, deixa rastro e pode ser bloqueada.
+- **O que não muda:** o login continua não bastando para ver a localização exata. A área de 500 m, a exata só para adotante, verificado e moderador, e os limites diários seguem valendo ([06-riscos.md](06-riscos.md#3-segurança-dos-animais-localização)).
+- **Custo aceito:** mais atrito para quem só quer olhar, o que pesa contra o cold start (R8). Para compensar, a tela de entrada explica o motivo, e o login continua a um toque (Google) ou a um código por e-mail.
+- **Consequências:**
+  - API: `GET /casinhas` e `GET /casinhas/:id` exigem token. Nenhuma leitura de casinha é `@Publico()`.
+  - App: as abas ficam atrás de `Stack.Protected` com `estado === 'logado'`; o `useExigirLogin()` deixou de existir.
+  - Compartilhamento (T2.2): a página web de um link não mostra mapa nem área, só nome, status e o botão da loja.

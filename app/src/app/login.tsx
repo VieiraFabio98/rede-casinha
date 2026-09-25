@@ -1,8 +1,8 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 
 import { Botao } from '@/components/botao';
 import { CampoTexto } from '@/components/campo-texto';
+import { Logo } from '@/components/logo';
 import { MensagemErro } from '@/components/mensagem-erro';
 import { TelaFormulario } from '@/components/tela-formulario';
 import { ThemedText } from '@/components/themed-text';
@@ -15,7 +15,6 @@ const t = textos.login;
 
 export default function LoginScreen() {
   const sessao = useSessao();
-  const router = useRouter();
   const [etapa, setEtapa] = useState<Etapa>('inicio');
   const [email, setEmail] = useState('');
   const [codigo, setCodigo] = useState('');
@@ -29,11 +28,6 @@ export default function LoginScreen() {
     const id = setTimeout(() => setReenvioEm((s) => s - 1), 1000);
     return () => clearTimeout(id);
   }, [reenvioEm]);
-
-  // Logado: fecha o login. Cadastro pendente: as rotas protegidas levam à tela de cadastro.
-  useEffect(() => {
-    if (sessao.estado === 'logado' && router.canGoBack()) router.back();
-  }, [sessao.estado, router]);
 
   async function executar(acao: () => Promise<void>) {
     setErro(null);
@@ -57,18 +51,19 @@ export default function LoginScreen() {
 
   return (
     <TelaFormulario>
-      <ThemedText type="subtitle">{t.titulo}</ThemedText>
+      <Logo />
+      {/* <ThemedText type="subtitle">{t.titulo}</ThemedText> */}
 
       {etapa === 'inicio' && (
         <>
-          <ThemedText themeColor="textSecondary">{t.subtitulo}</ThemedText>
+          {/* <ThemedText themeColor="textSecondary">{t.subtitulo}</ThemedText> */}
           <Botao
             titulo={t.google}
             carregando={carregando}
             onPress={() => executar(async () => void (await sessao.entrarComGoogle()))}
           />
           <Botao titulo={t.email} variante="secundario" onPress={() => setEtapa('email')} />
-          <Botao titulo={t.outrasFormas} variante="texto" onPress={() => setEtapa('senha')} />
+          {/* <Botao titulo={t.outrasFormas} variante="texto" onPress={() => setEtapa('senha')} /> */}
         </>
       )}
 

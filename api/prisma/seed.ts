@@ -22,6 +22,7 @@ import {
   TipoNecessidade,
   Urgencia,
 } from '../src/generated/prisma/client.js';
+import { gerarLocalizacaoPublica } from '../src/modulos/localizacao/localizacao-publica.js';
 
 const DOMINIO_SEED = 'seed.test';
 const CENTRO: Ponto = {
@@ -159,7 +160,7 @@ async function main() {
     for (let i = 0; i < TOTAL_CASINHAS; i++) {
       // Distribuição uniforme no disco (sqrt evita concentrar tudo no centro).
       const exata = destino(CENTRO, RAIO_M * Math.sqrt(aleatorio()), aleatorio() * 360);
-      const publica = destino(exata, 150 + aleatorio() * 250, aleatorio() * 360);
+      const publica = gerarLocalizacaoPublica(exata, aleatorio);
       const criador = escolher(criadores);
       const criadaEm = new Date(agora.getTime() - (5 + aleatorio() * 85) * DIA);
       // Parte das casinhas fica sem notícias (> 7 dias sem atividade).

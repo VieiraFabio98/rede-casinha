@@ -466,28 +466,30 @@ Todos sob `https://<dominio>/v1`, exceto `GET /saude` (na raiz, para o monitoram
 ### Leitura
 | Método e rota | Acesso | Retorno | Regras |
 |---|---|---|---|
-| `GET /casinhas?minLat&minLng&maxLat&maxLng` | público | lista: `id, nome, status, animais, lat, lng, exata:boolean, necessidadesAbertas[]` | Máx. 1.000 itens. Coordenada exata só para criador, adotante, moderador ou verificado (dentro do limite diário); para os demais, a pública. Não traz `inativa`. Payload mínimo (~60 bytes por casinha). |
-| `GET /casinhas/:id` | público (fotos só logado) | casinha + necessidades abertas + adotantes (apelidos) + 30 últimas atividades + fotos (URLs assinadas) + `minhasPermissoes` | Registra em `acessos_localizacao` quando devolve a exata a um verificado. |
+| `GET /casinhas?minLat&minLng&maxLat&maxLng` | logado | `{ casinhas: [{ id, nome, status, animais, lat, lng, exata, necessidadesAbertas[] }], truncado }` | Filtra pela coordenada **pública**. Máx. 1.000 itens (`truncado = true` se havia mais). Exata para criador, adotante e moderador; o verificado vê na lista **só** as que já abriu hoje no detalhe (a lista não gasta cota). Não traz inativas nem ocultadas. Coordenadas com 6 casas. ~200 bytes por casinha sem compressão. |
+| `GET /casinhas/:id` | logado | casinha + necessidades abertas + adotantes (apelidos) + 30 últimas atividades (`apelido: null` = usuário removido) + `minhasPermissoes`. Fotos entram na T1.5. | Para o verificado, devolver a exata gasta 1 das 50 casinhas distintas do dia e registra em `acessos_localizacao`. Ocultada: só moderador, criador e adotantes; inativa: só moderador; senão 404. |
 | `GET /me` | logado | perfil + contagens | |
-| `GET /me/casinhas` | logado | casinhas que criei ou adotei, com status | |
+| `GET /me/casinhas` | logado | casinhas que criei ou adotei: mesmos campos do mapa + `souCriador`, `souAdotante` | Sempre com a exata. Inclui as ocultadas por denúncia; não inclui as inativas. |
 | `GET /fotos/:id?v=miniatura&exp&assinatura` | URL assinada | arquivo JPEG | Assinatura HMAC com validade de 1 h; `Cache-Control: private`. |
 | `GET /saude` | público | `{ ok, banco }` | Fora do prefixo `/v1`. 503 se o banco estiver fora. |
 
 ### Escrita (exigem login, perfil não bloqueado e os limites da RN06)
+
+Reportar, reconfirmar, atender, contestar e check-in (módulo `necessidades`) respondem `{ resultado, necessidadeId, status }` e travam a linha da casinha durante a transação. Reenviar o mesmo id devolve 200 sem repetir o efeito. Erros de regra são 4xx (`limite_diario` é 403, não 429), para a fila do celular não insistir.
 | Método e rota | Corpo | Efeito |
 |---|---|---|
 | `POST /me/cadastro` | `{ apelido, maiorDeIdade, termosVersao }` | Cria o `perfis`. |
 | `DELETE /me` | — | RN07: anonimiza contribuições, apaga fotos, perfil, sessões, dispositivos e o usuário. |
 | `POST /casinhas` | `{ id, nome, descricao, animais, lat, lng, precisaoM, forcar, criadaNoCelularEm }` | Recusa se `precisaoM > 30` sem ajuste manual. Procura duplicatas a até 30 m: se houver e `forcar = false`, devolve `{ resultado: 'possivel_duplicata', candidatos: [{ id, nome, miniatura }] }` sem coordenadas. Se não, cria `casinhas` + `casinhas_localizacao` + atividade `cadastro` + adoção do criador. |
 | `PATCH /casinhas/:id` | `{ nome?, descricao?, animais?, lat?, lng? }` | Só criador, adotante ou moderador. Mudança de localização limitada a 30 m (exceto moderador). |
-| `POST /casinhas/:id/check-in` | `{ atividadeId, lat?, lng? }` | Atualiza `ultima_atividade_em`. |
+| `POST /casinhas/:id/check-in` | `{ atividadeId, lat?, lng?, criadaNoCelularEm? }` | Atualiza `ultima_atividade_em` e recalcula o status. |
 | `POST /casinhas/:id/desativacao` | `{ atividadeId, motivo }` | Atividade + entrada na fila de moderação. |
 | `POST /casinhas/:id/adocao` | `{ lat, lng }` | Permitido ao criador, ou a quem está ≤ 100 m da exata. Resposta só `ok` ou `nao_permitido`, **sem distância**. Máx. 3 adotantes. |
 | `DELETE /casinhas/:id/adocao` | — | Encerra a adoção. |
 | `POST /necessidades` | `{ id, casinhaId, tipo, urgencia, observacao?, lat?, lng?, criadaNoCelularEm }` | Se já existe aberta do mesmo tipo: reconfirma (e sobe a urgência se for o caso). Calcula `validado_local` (≤ 100 m) e descarta as coordenadas do usuário. Recalcula o status. |
-| `POST /necessidades/:id/reconfirmar` | `{ atividadeId }` | Renova `expira_em`. 1 vez a cada 12 h por usuário. |
+| `POST /necessidades/:id/reconfirmar` | `{ atividadeId, lat?, lng? }` | Renova `expira_em`. 1 vez a cada 12 h por usuário (antes disso devolve `ja_reconfirmada`, sem erro). Necessidade fechada: 409. |
 | `POST /necessidades/:id/atender` | `{ atividadeId, observacao?, lat?, lng? }` | `status = atendida`. Se já estava atendida, só registra a atividade e devolve `{ resultado: 'ja_atendida' }`. |
-| `POST /necessidades/:id/contestar` | `{ atividadeId, observacao }` | Só até 24 h depois do atendimento. Reabre a necessidade. |
+| `POST /necessidades/:id/contestar` | `{ atividadeId, observacao }` | Só até 24 h depois do atendimento (senão 409 `fora_do_prazo`). Reabre a necessidade, a menos que já exista outra aberta do mesmo tipo. |
 | `PUT /fotos/:id` | multipart: `arquivo`, `miniatura`, `casinhaId`, `atividadeId?` | Idempotente pelo `id`. Máx. 1 MB, só `image/jpeg`, limite por casinha. Grava pela interface de armazenamento e registra em `fotos`. |
 | `POST /denuncias` | `{ alvoTipo, alvoId, motivo, descricao? }` | Com 3 denúncias distintas de contas com ≥ 7 dias: `moderacao = oculto_auto`. |
 
@@ -530,7 +532,10 @@ Na Fase 2 entra o **pg-boss** para trabalhos com retentativa (push). O relógio 
 ```sql
 create table outbox (
   id text primary key,          -- = id / atividadeId enviado à API
+  usuario_id text not null,     -- dono: só é enviada com a sessão dele
   operacao text not null,       -- 'criar_casinha' | 'reportar_necessidade' | ...
+  metodo text not null,         -- 'POST' | 'PUT' | ...
+  caminho text not null,        -- ex.: /casinhas/<id>/check-in
   payload text not null,        -- JSON com o corpo da requisição
   fotos text,                   -- JSON: [{id, uri_local, uri_miniatura}]
   status text not null,         -- 'pendente' | 'enviando' | 'erro_permanente'
@@ -543,12 +548,13 @@ create table outbox (
 
 ### Regras do sync worker
 1. Dispara quando: uma operação entra na fila, a rede volta (NetInfo), o app volta ao primeiro plano, e a cada 2 min enquanto o app está aberto e há pendências.
-2. Processa **em ordem de criação**, uma por vez. Uma casinha criada offline precisa existir antes dos reportes nela.
+2. Processa **em ordem de criação**, uma por vez. Uma casinha criada offline precisa existir antes dos reportes nela. Um erro temporário para a fila inteira (não pula o item da frente); um erro permanente tira o item da frente e a fila segue.
 3. Para cada item: (a) chama o endpoint da operação; (b) sobe as fotos com `PUT /fotos/:id` (idempotente); (c) remove da fila.
 4. Erro de rede ou 5xx: backoff. Erro de regra (4xx: limite, sem permissão, casinha inativa): `erro_permanente`, avisa o usuário e envia ao Sentry. 401: renova o token e tenta de novo.
 5. As fotos pendentes ficam copiadas em `FileSystem.documentDirectory` (não em cache, que o sistema pode apagar).
 6. **UI otimista:** a ação aparece na hora na tela, com o selo "aguardando envio", via `queryClient.setQueryData`. Depois do sync, as queries são invalidadas.
 7. Um contador "N ações aguardando envio" fica visível no topo do mapa.
+8. A rede voltar e o app voltar ao primeiro plano ignoram a espera do backoff (as condições mudaram); o intervalo de 2 min a respeita.
 
 ```mermaid
 sequenceDiagram
@@ -574,13 +580,13 @@ sequenceDiagram
 ```
 
 ### Leitura offline
-- O TanStack Query persiste no MMKV as respostas de `GET /casinhas` (área arredondada a uma grade de ~2 km para reaproveitar cache), `GET /casinhas/:id` e `GET /me/casinhas`, com `gcTime` de 7 dias.
+- O TanStack Query persiste no MMKV as respostas de `GET /casinhas` (área arredondada a uma grade de ~2 km para reaproveitar cache), `GET /casinhas/:id` e `GET /me/casinhas`, com `gcTime` de 7 dias. Ao sair da conta, o cache em memória e o persistido são apagados (podem conter exatas que só o usuário anterior via).
 - Os tiles do mapa ficam no cache automático do MapLibre (*ambient cache*). O download explícito do bairro fica para a F2.
 
 ## Segurança: resumo
 
 - O app só conhece a URL da API. **Nenhum segredo no app.**
-- **Guard global:** toda rota exige token, exceto as marcadas com `@Publico()`. Um teste e2e lista as rotas públicas e falha se aparecer uma nova sem revisão.
+- **Guard global:** toda rota exige token, exceto as marcadas com `@Publico()` (só auth e `/saude`; nenhuma leitura de casinha, ver [D01](01-visao-geral.md#d01--mapa-só-com-login-2026-09-25)). Um teste e2e lista as rotas públicas e falha se aparecer uma nova sem revisão.
 - **DTOs validados** em toda entrada (`whitelist` + `forbidNonWhitelisted`): campos extras são rejeitados.
 - **Localização exata** só sai pelo módulo `localizacao`. Nenhum endpoint devolve a distância entre o usuário e a casinha. Testes e2e para cada nível de acesso.
 - **Tokens:** acesso de 15 min; refresh opaco, rotativo e com hash no banco; códigos por e-mail com hash, validade e limite de tentativas.

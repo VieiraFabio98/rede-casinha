@@ -1,8 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
-import { destino, type Ponto } from '../src/comum/geo.js';
+import type { Ponto } from '../src/comum/geo.js';
 import { normalizarApelido } from '../src/comum/texto.js';
-import { NivelAcesso, type PrismaClient } from '../src/generated/prisma/client.js';
+import {
+  NivelAcesso,
+  type PrismaClient,
+  type SituacaoCasinha,
+  type StatusModeracao,
+} from '../src/generated/prisma/client.js';
+import { gerarLocalizacaoPublica } from '../src/modulos/localizacao/localizacao-publica.js';
 
 const PRACA_DA_SE: Ponto = { lat: -23.5505, lng: -46.6333 };
 
@@ -36,10 +42,16 @@ export async function criarUsuario(
 /** Cria casinha com localização exata e pública (deslocada 150–400 m). */
 export async function criarCasinha(
   prisma: PrismaClient,
-  dados: { criadaPorId?: string; exata?: Ponto; nome?: string } = {},
+  dados: {
+    criadaPorId?: string;
+    exata?: Ponto;
+    nome?: string;
+    situacao?: SituacaoCasinha;
+    moderacao?: StatusModeracao;
+  } = {},
 ) {
   const exata = dados.exata ?? PRACA_DA_SE;
-  const publica = destino(exata, 150 + Math.random() * 250, Math.random() * 360);
+  const publica = gerarLocalizacaoPublica(exata);
   return prisma.casinha.create({
     data: {
       nome: dados.nome ?? 'Casinha de teste',
@@ -47,6 +59,8 @@ export async function criarCasinha(
       latPublica: publica.lat,
       lngPublica: publica.lng,
       criadaPorId: dados.criadaPorId,
+      situacao: dados.situacao,
+      moderacao: dados.moderacao,
       localizacao: { create: { lat: exata.lat, lng: exata.lng, precisaoM: 10 } },
     },
   });

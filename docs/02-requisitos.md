@@ -19,7 +19,7 @@ Legenda de fase: **MVP** = Fase 1 · **F2** = Fase 2 (comunidade) · **F3** = Fa
 
 | Nível | Quem é | Como obtém |
 |---|---|---|
-| `visitante` | Sem login | — |
+| `visitante` | Sem login. Só vê a tela de entrada ([D01](01-visao-geral.md#d01--mapa-só-com-login-2026-09-25)). | — |
 | `colaborador` | Logado, e-mail confirmado, maior de 18 anos declarado | Cadastro |
 | `verificado` | Colaborador de confiança | Promovido manualmente por um moderador |
 | `moderador` | Cuida de denúncias e verificações | Promovido por um admin (F2: moderadores regionais voluntários) |
@@ -32,6 +32,7 @@ Legenda de fase: **MVP** = Fase 1 · **F2** = Fase 2 (comunidade) · **F3** = Fa
 ### RF01 — Mapa
 | ID | Requisito | Fase |
 |---|---|---|
+| RF01.0 | O mapa só abre para quem está logado e com o cadastro concluído ([D01](01-visao-geral.md#d01--mapa-só-com-login-2026-09-25)). | MVP |
 | RF01.1 | Abrir o mapa centralizado na localização do usuário (com permissão) ou na última região vista. | MVP |
 | RF01.2 | Mostrar casinhas com cor de status (verde, amarelo, vermelho, cinza). | MVP |
 | RF01.3 | Agrupar marcadores (clustering) em zoom baixo; o cluster mostra a cor do pior status do grupo. | MVP |
@@ -109,7 +110,7 @@ Legenda de fase: **MVP** = Fase 1 · **F2** = Fase 2 (comunidade) · **F3** = Fa
 
 | Ação | Visitante | Colaborador | Criador / Adotante (da casinha) | Verificado | Moderador |
 |---|:-:|:-:|:-:|:-:|:-:|
-| Ver mapa com área aproximada e status | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Ver mapa com área aproximada e status | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Ver fotos | ❌ | ✅ | ✅ | ✅ | ✅ |
 | Ver localização exata | ❌ | ❌ | ✅ (só dessa casinha) | ✅ (máx. 50 casinhas distintas por dia, com registro em log) | ✅ |
 | Cadastrar casinha | ❌ | ✅ (5/dia) | — | ✅ (20/dia) | ✅ |
@@ -180,6 +181,8 @@ Uma necessidade aberta **expira** se ninguém a reconfirmar dentro do prazo do t
 | Fotos | 20/dia; máximo de 5 fotos de perfil por casinha; fotos de atendimento são apagadas após 90 dias |
 | Denúncias | 20/dia |
 | Casinhas com localização exata vistas (verificado) | 50 distintas/dia |
+
+O "dia" dos limites vira à **meia-noite de Brasília** (`America/Sao_Paulo`), não à do servidor (UTC).
 
 ### RN07 — Conta
 - Idade mínima: 18 anos (autodeclarada). Isso evita o tratamento de dados de menores (LGPD art. 14 e ECA Digital).

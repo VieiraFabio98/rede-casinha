@@ -4,7 +4,6 @@ import {
   isSuccessResponse,
   statusCodes,
 } from '@react-native-google-signin/google-signin';
-import { useRouter } from 'expo-router';
 import {
   createContext,
   useCallback,
@@ -17,6 +16,7 @@ import {
 } from 'react';
 
 import { api, ErroApi, ligarSessao } from '@/api/cliente';
+import { apagarCache } from '@/api/consultas';
 import type { Me, Tokens } from '@/api/tipos';
 import { VERSAO_TERMOS } from '@/domain/termos';
 import { textos } from '@/i18n/pt-BR';
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refresh.current = null;
     setMe(null);
     setEstado('visitante');
-    await apagarSessao();
+    await Promise.all([apagarSessao(), apagarCache()]);
   }, []);
 
   const aplicarTokens = useCallback(async (tokens: Tokens) => {
@@ -185,21 +185,4 @@ export function useSessao(): ContextoSessao {
   const contexto = useContext(Contexto);
   if (!contexto) throw new Error('useSessao precisa estar dentro de <AuthProvider>');
   return contexto;
-}
-
-/**
- * Para ações que exigem login (reportar, cadastrar, adotar):
- * `const exigirLogin = useExigirLogin(); exigirLogin(() => abrirFormulario())`.
- * Visitantes são levados à tela "Entre para ajudar".
- */
-export function useExigirLogin() {
-  const { estado } = useSessao();
-  const router = useRouter();
-  return useCallback(
-    (acao: () => void) => {
-      if (estado === 'logado') acao();
-      else router.push('/login');
-    },
-    [estado, router],
-  );
 }

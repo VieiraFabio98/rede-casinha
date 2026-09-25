@@ -60,5 +60,7 @@ const styles = StyleSheet.create({
   },
   texto: {
     fontWeight: 700,
+    // Em botões estreitos (lado a lado) o título pode quebrar em duas linhas.
+    textAlign: 'center',
   },
 });
