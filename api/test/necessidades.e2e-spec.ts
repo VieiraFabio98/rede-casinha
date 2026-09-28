@@ -4,10 +4,10 @@ import type { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 
-import { destino, type Ponto } from '../src/comum/geo.js';
-import { diaAtual } from '../src/comum/tempo.js';
+import { destino, type Ponto } from '../src/shared/domain/geo.js';
+import { diaAtual } from '../src/shared/domain/tempo.js';
 import type { NivelAcesso, PrismaClient } from '../src/generated/prisma/client.js';
-import { LIMITES } from '../src/modulos/limites/limites.service.js';
+import { LIMITES } from '../src/modulos/limites/domain/limites.js';
 import { criarAppDeTeste, RelogioDeTeste } from './app.js';
 import { criarPrismaDeTeste, limparBanco } from './banco.js';
 import { criarCasinha, criarUsuario } from './fabricas.js';

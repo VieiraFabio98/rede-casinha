@@ -19,7 +19,18 @@ type Atividade = CasinhaDetalhe['atividades'][number];
 type Urgencia = Necessidade['urgencia'];
 
 /** Nomes das operações na outbox (tela "Pendências"). */
-export type OperacaoCasinha = 'reportar' | 'reconfirmar' | 'atender' | 'contestar' | 'check_in';
+export type OperacaoCasinha =
+  | 'reportar'
+  | 'reconfirmar'
+  | 'atender'
+  | 'contestar'
+  | 'check_in'
+  | 'denunciar'
+  | 'pedir_desativacao';
+
+export type AlvoDenuncia = 'casinha' | 'necessidade' | 'foto' | 'perfil';
+export type MotivoDenuncia =
+  'falsa' | 'duplicada' | 'ofensiva' | 'expoe_pessoa' | 'perigo_animais' | 'outro';
 
 /**
  * Posição para o `validado_local` (até 100 m da casinha). Só se a permissão já foi dada:
@@ -60,7 +71,7 @@ function atividade(
   necessidade: TipoNecessidade | null = null,
   observacao: string | null = null,
 ): Atividade {
-  return { id, tipo, apelido, necessidade, observacao, criadaEm: agoraIso() };
+  return { id, tipo, apelido, necessidade, observacao, criadaEm: agoraIso(), foto: null };
 }
 
 /** Aplica a mudança no detalhe e repete status/necessidades no mapa e em "Minhas casinhas". */
@@ -238,6 +249,45 @@ export async function checkIn(casinhaId: string, apelido: string) {
     (cliente) =>
       atualizar(cliente, casinhaId, (d) => ({
         atividades: [atividade(atividadeId, 'check_in', apelido), ...d.atividades],
+      })),
+  );
+}
+
+/**
+ * Denúncia (RF06.1). Pela fila: funciona offline. Não há efeito otimista: a moderação decide.
+ * Repetir a mesma denúncia não duplica (a API guarda uma por pessoa e alvo).
+ */
+export async function denunciar(
+  alvo: { alvoTipo: AlvoDenuncia; alvoId: string },
+  motivo: MotivoDenuncia,
+  descricao?: string,
+) {
+  await enfileirar({
+    id: novoId(),
+    operacao: 'denunciar' satisfies OperacaoCasinha,
+    metodo: 'POST',
+    caminho: '/denuncias',
+    corpo: { ...alvo, motivo, descricao },
+  });
+}
+
+/** "A casinha não existe mais" (RF02.7): pedido para a moderação conferir. */
+export async function pedirDesativacao(casinhaId: string, motivo: string, apelido: string) {
+  const atividadeId = novoId();
+  await enfileirar(
+    {
+      id: atividadeId,
+      operacao: 'pedir_desativacao' satisfies OperacaoCasinha,
+      metodo: 'POST',
+      caminho: `/casinhas/${casinhaId}/desativacao`,
+      corpo: { atividadeId, motivo },
+    },
+    (cliente) =>
+      atualizar(cliente, casinhaId, (d) => ({
+        atividades: [
+          atividade(atividadeId, 'desativacao_pedida', apelido, null, motivo),
+          ...d.atividades,
+        ],
       })),
   );
 }

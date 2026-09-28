@@ -2,12 +2,20 @@
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3000/v1';
 
+/**
+ * URL de uma foto: as da API vêm relativas (`/fotos/…`, já assinadas); as que ainda esperam na
+ * fila são arquivos locais (`file://…`).
+ */
+export const urlDaFoto = (url: string) => (url.startsWith('file:') ? url : `${API_URL}${url}`);
+
 export class ErroApi extends Error {
   constructor(
     /** 0 = sem conexão com a API. */
     readonly status: number,
     message: string,
     readonly codigo?: string,
+    /** Detalhes para o app decidir (ex.: as candidatas de uma possível duplicata). */
+    readonly dados?: unknown,
   ) {
     super(message);
   }
@@ -19,6 +27,7 @@ export class ErroApi extends Error {
 
 interface Opcoes {
   metodo?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  /** Vai como JSON; `FormData` vai como multipart (fotos). */
   corpo?: unknown;
   /** `false` nas rotas de login: não envia token nem tenta renovar. */
   autenticado?: boolean;
@@ -39,15 +48,17 @@ export function ligarSessao(nova: Sessao) {
 
 export async function api<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
   const { metodo = 'GET', corpo, autenticado = true } = opcoes;
+  // Multipart: o fetch define o Content-Type (com o boundary) sozinho.
+  const multipart = corpo instanceof FormData;
   const executar = (token: string | null) =>
     fetch(`${API_URL}${caminho}`, {
       method: metodo,
       headers: {
         Accept: 'application/json',
-        ...(corpo !== undefined && { 'Content-Type': 'application/json' }),
+        ...(corpo !== undefined && !multipart && { 'Content-Type': 'application/json' }),
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+      body: corpo === undefined ? undefined : multipart ? corpo : JSON.stringify(corpo),
     });
 
   let resposta: Response;
@@ -58,7 +69,9 @@ export async function api<T>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
       const novo = await sessao.renovar();
       if (novo) resposta = await executar(novo);
     }
-  } catch {
+  } catch (erroDeRede) {
+    // Em dev, mostra a causa real: nem toda falha aqui é falta de internet (ex.: corpo inválido).
+    if (__DEV__) console.warn(`Falha no fetch ${metodo} ${caminho}:`, String(erroDeRede));
     throw new ErroApi(0, 'Sem conexão com a internet. Tente de novo.');
   }
 

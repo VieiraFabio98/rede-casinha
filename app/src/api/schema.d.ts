@@ -117,6 +117,28 @@ export interface paths {
     get: operations['MeController_obter'];
     put?: never;
     post?: never;
+    /**
+     * Exclui a conta de vez (RN07). Vale também com cadastro pendente e com a conta bloqueada:
+     *     o direito de apagar os próprios dados não depende disso. A página web de exclusão (T0.8)
+     *     usa o login por código e esta mesma rota.
+     */
+    delete: operations['MeController_excluir'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/me/contagens': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Contagens para a tela de perfil. */
+    get: operations['MeController_contagens'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -140,6 +162,44 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/fotos/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Foto em 1024 px, pela URL assinada que vem no detalhe da casinha. */
+    get: operations['FotosController_abrir'];
+    /**
+     * Envia uma foto (multipart). O id é gerado no celular: reenviar a mesma foto não duplica.
+     *     Sem `atividadeId`, é foto de perfil da casinha (criador, adotante ou moderador; até 5).
+     */
+    put: operations['FotosController_enviar'];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/fotos/{id}/miniatura': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Miniatura em 320 px, pela URL assinada que vem no detalhe da casinha. */
+    get: operations['FotosController_abrirMiniatura'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/v1/casinhas': {
     parameters: {
       query?: never;
@@ -153,7 +213,12 @@ export interface paths {
      */
     get: operations['CasinhasController_listarNaArea'];
     put?: never;
-    post?: never;
+    /**
+     * Cadastra uma casinha (idempotente pelo id do celular). Com outra casinha a até 30 m, devolve
+     *     `possivel_duplicata` e as candidatas sem criar nada; reenvie com `forcar: true` se for nova.
+     *     Precisão do GPS acima de 30 m sem `ajusteManual`: 422 `precisao_insuficiente`.
+     */
+    post: operations['CasinhasController_cadastrar'];
     delete?: never;
     options?: never;
     head?: never;
@@ -279,6 +344,211 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/v1/casinhas/{id}/adocao': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Adota a casinha. Quem não é o criador precisa mandar a posição e estar a até 100 m.
+     *     Resposta só `ok` ou `nao_permitido`, sem motivo nem distância.
+     */
+    post: operations['AdocoesController_adotar'];
+    /** Deixa de adotar. */
+    delete: operations['AdocoesController_deixarDeAdotar'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/denuncias': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Denuncia casinha, foto, necessidade ou usuário (RF06.1). Resposta sempre `ok`. */
+    post: operations['DenunciasController_denunciar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/casinhas/{id}/desativacao': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** "A casinha não existe mais" (RF02.7): pedido para a moderação. */
+    post: operations['DenunciasController_pedirDesativacao'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/fila': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Denúncias abertas (prioritárias primeiro), casinhas em revisão, pedidos de desativação e possíveis duplicatas. */
+    get: operations['ModeracaoController_fila'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/ocultar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Oculta casinha ou foto; cancela necessidade. As denúncias abertas do alvo viram procedentes. */
+    post: operations['ModeracaoController_ocultar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/restaurar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Desfaz a ocultação. As denúncias abertas do alvo viram improcedentes. */
+    post: operations['ModeracaoController_restaurar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/casinhas/{id}/desativar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['ModeracaoController_desativar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/casinhas/{id}/ativar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Aprova casinha em revisão, reativa, ou mantém depois de um pedido de desativação. */
+    post: operations['ModeracaoController_ativar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/casinhas/{id}/mesclar': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Mescla a casinha da rota (duplicata) na `destinoId`. */
+    post: operations['ModeracaoController_mesclar'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/usuarios/{id}/nivel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['ModeracaoController_nivel'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/usuarios/{id}/bloqueio': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Bloqueia até a data (ou desbloqueia com `ate: null`). */
+    post: operations['ModeracaoController_bloqueio'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/v1/admin/denuncias/{id}/resolver': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['ModeracaoController_resolver'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/saude': {
     parameters: {
       query?: never;
@@ -347,6 +617,13 @@ export interface components {
       /** @description `null` enquanto o cadastro não for concluído. */
       perfil: components['schemas']['PerfilResposta'] | null;
     };
+    ContagensResposta: {
+      /** @description Reportes, reconfirmações, atendimentos e check-ins. */
+      contribuicoes: number;
+      atendimentos: number;
+      /** @description Casinhas que adota hoje. */
+      casinhasAdotadas: number;
+    };
     ConcluirCadastroDto: {
       /**
        * @description Nome público, de 3 a 30 caracteres: letras, números, espaço, `_`, `.` e `-`.
@@ -357,6 +634,59 @@ export interface components {
       maiorDeIdade: boolean;
       /** @description Versão dos termos que o usuário aceitou (tem que ser a vigente). */
       termosVersao: string;
+    };
+    FotoUrls: {
+      id: string;
+      /**
+       * @description Relativa à base da API (junte com `EXPO_PUBLIC_API_URL`). Assinada: vale por pelo menos
+       *     1 h e não precisa de token. Expirou? Busque o detalhe de novo.
+       */
+      url: string;
+      urlMiniatura: string;
+    };
+    CadastrarCasinhaDto: {
+      /**
+       * Format: uuid
+       * @description Gerado no celular. Reenviar o mesmo id não duplica nada (idempotência).
+       */
+      id: string;
+      /** @description Ex.: "Casinha da Praça do Rosário". */
+      nome: string;
+      /** @enum {string} */
+      animais: 'caes' | 'gatos' | 'ambos';
+      descricao?: string;
+      lat: number;
+      lng: number;
+      /** @description Precisão do GPS, em metros. Acima de 30 m, só com `ajusteManual`. */
+      precisaoM: number;
+      /** @description O pino foi ajustado no mapa e confirmado (a até 50 m da leitura do GPS, conferido no app). */
+      ajusteManual?: boolean;
+      /**
+       * @description "É nova": cria mesmo com casinha a até 30 m. Ela entra em revisão (RN04). Sem isso, a
+       *     resposta é `possivel_duplicata` com as candidatas.
+       */
+      forcar?: boolean;
+      /**
+       * Format: date-time
+       * @description Quando o cadastro foi feito no celular (pode ser bem antes do envio, se estava offline).
+       */
+      criadaNoCelularEm?: string;
+    };
+    CandidataDuplicata: {
+      id: string;
+      nome: string;
+      miniatura: components['schemas']['FotoUrls'] | null;
+    };
+    ResultadoCadastro: {
+      /**
+       * @description `possivel_duplicata`: nada foi criado; mostre as candidatas e reenvie com `forcar` se for nova.
+       * @enum {string}
+       */
+      resultado: 'ok' | 'possivel_duplicata';
+      id: string;
+      /** @description Criada com casinha a até 30 m (`forcar`): aparece no mapa, mas a moderação vai conferir. */
+      emRevisao: boolean;
+      candidatas: components['schemas']['CandidataDuplicata'][];
     };
     CasinhaNoMapa: {
       id: string;
@@ -434,6 +764,8 @@ export interface components {
       observacao: string | null;
       /** Format: date-time */
       criadaEm: string;
+      /** @description Foto anexada à atividade (ex.: do atendimento). */
+      foto: components['schemas']['FotoUrls'] | null;
     };
     MinhasPermissoes: {
       editar: boolean;
@@ -467,6 +799,8 @@ export interface components {
       adotantes: string[];
       /** @description As 30 mais recentes, da mais nova para a mais antiga. */
       atividades: components['schemas']['AtividadeResumo'][];
+      /** @description Fotos de perfil (até 5), da mais antiga para a mais nova. */
+      fotos: components['schemas']['FotoUrls'][];
       minhasPermissoes: components['schemas']['MinhasPermissoes'];
     };
     MinhaCasinha: {
@@ -559,6 +893,134 @@ export interface components {
       atividadeId: string;
       /** @description O que não foi feito (ex.: "o pote continua vazio"). */
       observacao: string;
+    };
+    AdotarDto: {
+      lat?: number;
+      lng?: number;
+    };
+    ResultadoAdocao: {
+      /**
+       * @description `nao_permitido` não diz o motivo (longe, sem posição, já tem 3 adotantes): a resposta
+       *     não pode servir para descobrir, por tentativa, onde fica a casinha.
+       * @enum {string}
+       */
+      resultado: 'ok' | 'nao_permitido';
+    };
+    DenunciarDto: {
+      /** @enum {string} */
+      alvoTipo: 'casinha' | 'foto' | 'necessidade' | 'perfil';
+      /** Format: uuid */
+      alvoId: string;
+      /** @enum {string} */
+      motivo: 'falsa' | 'duplicada' | 'ofensiva' | 'expoe_pessoa' | 'perigo_animais' | 'outro';
+      descricao?: string;
+    };
+    RecebidoResposta: {
+      /**
+       * @description Sempre `ok`: a denúncia não revela quantas o alvo já tem nem se ele foi ocultado.
+       * @enum {string}
+       */
+      resultado: 'ok';
+    };
+    PedirDesativacaoDto: {
+      /**
+       * Format: uuid
+       * @description Gerado no celular: id da atividade e chave de idempotência (vem pela fila offline).
+       */
+      atividadeId: string;
+      /** @description Ex.: "a casinha foi retirada da praça". */
+      motivo: string;
+    };
+    DenunciasDoAlvo: {
+      /** @enum {string} */
+      alvoTipo: 'perfil' | 'casinha' | 'necessidade' | 'foto';
+      alvoId: string;
+      /** @description Resumo para reconhecer o alvo (nome da casinha, tipo da necessidade, apelido). */
+      descricaoAlvo: string;
+      /** @description Situação atual do alvo: visível, oculto, cancelado… */
+      estadoAlvo: string;
+      total: number;
+      motivos: ('outro' | 'falsa' | 'duplicada' | 'ofensiva' | 'expoe_pessoa' | 'perigo_animais')[];
+      /** @description "Perigo aos animais" ou "expõe pessoa": responder em até 24 h. */
+      prioridade: boolean;
+      /** Format: date-time */
+      maisAntigaEm: string;
+      denuncias: {
+        id: string;
+        /** @enum {string} */
+        motivo: 'outro' | 'falsa' | 'duplicada' | 'ofensiva' | 'expoe_pessoa' | 'perigo_animais';
+        descricao: string | null;
+        apelido: string | null;
+        /** Format: date-time */
+        criadaEm: string;
+      }[];
+    };
+    CasinhaNaFila: {
+      id: string;
+      nome: string;
+      /** @enum {string} */
+      situacao: 'ativa' | 'em_revisao' | 'inativa';
+      /** @enum {string} */
+      moderacao: 'visivel' | 'oculto_auto' | 'oculto_moderador';
+    };
+    PedidoDesativacao: {
+      atividadeId: string;
+      casinha: components['schemas']['CasinhaNaFila'];
+      apelido: string | null;
+      motivo: string | null;
+      /** Format: date-time */
+      criadoEm: string;
+    };
+    PossivelDuplicata: {
+      a: components['schemas']['CasinhaNaFila'];
+      b: components['schemas']['CasinhaNaFila'];
+      distanciaM: number;
+    };
+    FilaModeracao: {
+      /** @description Agrupadas por alvo; prioritárias primeiro, depois as mais antigas. */
+      denuncias: components['schemas']['DenunciasDoAlvo'][];
+      casinhasEmRevisao: components['schemas']['CasinhaNaFila'][];
+      pedidosDesativacao: components['schemas']['PedidoDesativacao'][];
+      possiveisDuplicatas: components['schemas']['PossivelDuplicata'][];
+    };
+    AlvoDto: {
+      /** @enum {string} */
+      alvoTipo: 'casinha' | 'foto' | 'necessidade' | 'perfil';
+      /** Format: uuid */
+      alvoId: string;
+      motivo: string;
+    };
+    FeitoResposta: {
+      /** @enum {string} */
+      resultado: 'ok';
+    };
+    MotivoDto: {
+      motivo: string;
+    };
+    MesclarDto: {
+      motivo: string;
+      /**
+       * Format: uuid
+       * @description A casinha que fica. A origem (da rota) é desativada e aponta para esta.
+       */
+      destinoId: string;
+    };
+    NivelDto: {
+      motivo: string;
+      /** @enum {string} */
+      nivel: 'colaborador' | 'verificado' | 'moderador' | 'admin';
+    };
+    BloqueioDto: {
+      motivo: string;
+      /**
+       * Format: date-time
+       * @description Até quando. `null` desbloqueia.
+       */
+      ate: string | null;
+    };
+    ResolverDenunciaDto: {
+      procedente: boolean;
+      motivo?: string;
     };
     SaudeResposta: {
       /** @description `true` quando a API e o banco estão respondendo. */
@@ -731,6 +1193,42 @@ export interface operations {
       };
     };
   };
+  MeController_excluir: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  MeController_contagens: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ContagensResposta'];
+        };
+      };
+    };
+  };
   MeController_concluirCadastro: {
     parameters: {
       query?: never;
@@ -754,6 +1252,86 @@ export interface operations {
       };
     };
   };
+  FotosController_abrir: {
+    parameters: {
+      query: {
+        assinatura: string;
+        /** @description Expiração da URL, em segundos (epoch). */
+        exp: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  FotosController_enviar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'multipart/form-data': {
+          /** Format: uuid */
+          casinhaId: string;
+          /** Format: uuid */
+          atividadeId?: string;
+          /** Format: binary */
+          foto: string;
+          /** Format: binary */
+          miniatura: string;
+        };
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FotoUrls'];
+        };
+      };
+    };
+  };
+  FotosController_abrirMiniatura: {
+    parameters: {
+      query: {
+        assinatura: string;
+        /** @description Expiração da URL, em segundos (epoch). */
+        exp: number;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   CasinhasController_listarNaArea: {
     parameters: {
       query: {
@@ -774,6 +1352,29 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['CasinhasNaAreaResposta'];
+        };
+      };
+    };
+  };
+  CasinhasController_cadastrar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CadastrarCasinhaDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResultadoCadastro'];
         };
       };
     };
@@ -937,6 +1538,315 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ResultadoAcao'];
+        };
+      };
+    };
+  };
+  AdocoesController_adotar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AdotarDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResultadoAdocao'];
+        };
+      };
+    };
+  };
+  AdocoesController_deixarDeAdotar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ResultadoAdocao'];
+        };
+      };
+    };
+  };
+  DenunciasController_denunciar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DenunciarDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RecebidoResposta'];
+        };
+      };
+    };
+  };
+  DenunciasController_pedirDesativacao: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PedirDesativacaoDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RecebidoResposta'];
+        };
+      };
+    };
+  };
+  ModeracaoController_fila: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FilaModeracao'];
+        };
+      };
+    };
+  };
+  ModeracaoController_ocultar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AlvoDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeitoResposta'];
+        };
+      };
+    };
+  };
+  ModeracaoController_restaurar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AlvoDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeitoResposta'];
+        };
+      };
+    };
+  };
+  ModeracaoController_desativar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MotivoDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeitoResposta'];
+        };
+      };
+    };
+  };
+  ModeracaoController_ativar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MotivoDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeitoResposta'];
+        };
+      };
+    };
+  };
+  ModeracaoController_mesclar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MesclarDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeitoResposta'];
+        };
+      };
+    };
+  };
+  ModeracaoController_nivel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NivelDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeitoResposta'];
+        };
+      };
+    };
+  };
+  ModeracaoController_bloqueio: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BloqueioDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeitoResposta'];
+        };
+      };
+    };
+  };
+  ModeracaoController_resolver: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ResolverDenunciaDto'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FeitoResposta'];
         };
       };
     };

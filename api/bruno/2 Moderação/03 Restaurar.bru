@@ -1,0 +1,26 @@
+meta {
+  name: Restaurar conteúdo
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/admin/restaurar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "alvoTipo": "casinha",
+    "alvoId": "{{alvoId}}",
+    "motivo": ""
+  }
+}
+docs {
+  Desfaz a ocultação (necessidade cancelada volta a aberta). As denúncias abertas contra o alvo viram improcedentes.
+}

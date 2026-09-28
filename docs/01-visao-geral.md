@@ -132,3 +132,11 @@ Decisões que mudaram o plano original. A mais recente fica no fim.
   - API: `GET /casinhas` e `GET /casinhas/:id` exigem token. Nenhuma leitura de casinha é `@Publico()`.
   - App: as abas ficam atrás de `Stack.Protected` com `estado === 'logado'`; o `useExigirLogin()` deixou de existir.
   - Compartilhamento (T2.2): a página web de um link não mostra mapa nem área, só nome, status e o botão da loja.
+
+### D02 — Camadas dentro de cada módulo da API (2026-09-28)
+
+- **Antes:** cada módulo tinha controller + service; o service era o caso de uso e falava direto com o Prisma, dentro da transação.
+- **Agora:** cada módulo tem três pastas: `domain` (entidades, repositórios e providers como **interfaces**, mais as regras puras), `application` (DTOs e use-cases, que só conhecem as interfaces) e `infra` (controller, repositórios Prisma com o mapeamento para a entidade, adaptadores para outros módulos). As transações passam por uma porta `Transacao`; erros e respostas HTTP usam `src/shared`.
+- **Por quê:** separar a regra de negócio do banco e do HTTP, testar use-cases sem banco (dublês em memória) e deixar claro o que cada módulo depende dos outros (portas no `domain`, adaptadores na `infra`).
+- **Custo aceito:** mais arquivos e indireção por ação; os testes de ponta a ponta continuam sendo a prova principal das regras que dependem do banco (índices, travas, cascata).
+- **Como foi feito:** piloto no módulo `necessidades`, depois os outros dez (concluído em 2026-09-28); a antiga pasta `comum/` foi absorvida por `shared/`. Um teste de arquitetura impede `domain` de importar Nest/Prisma/infra e `application` de importar Prisma/infra. Detalhes em [04-arquitetura.md](04-arquitetura.md#camadas-de-um-módulo).

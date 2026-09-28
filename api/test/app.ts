@@ -2,10 +2,15 @@ import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module.js';
-import { Relogio } from '../src/comum/relogio.js';
+import { Relogio } from '../src/shared/infra/relogio.js';
 import { configurarApp } from '../src/configurar-app.js';
-import { EmailMemoria, EmailService } from '../src/infra/email/email.service.js';
-import { GoogleService, type IdentidadeGoogle } from '../src/modulos/auth/google.service.js';
+import { EmailMemoria, EmailService } from '../src/shared/infra/email/email.service.js';
+import {
+  type IdentidadeGoogle,
+  VERIFICADOR_GOOGLE,
+  type VerificadorGoogle,
+} from '../src/modulos/auth/domain/providers/verificador-google.provider.js';
+import { UnauthorizedError } from '../src/shared/errors/index.js';
 
 /**
  * Google simulado: o "ID token" é um JSON com a identidade que o teste quer.
@@ -15,15 +20,14 @@ export function tokenGoogle(identidade: IdentidadeGoogle & { emailVerificado?: b
   return JSON.stringify(identidade);
 }
 
-class GoogleSimulado {
+class GoogleSimulado implements VerificadorGoogle {
   async verificar(idToken: string): Promise<IdentidadeGoogle> {
-    const { UnauthorizedException } = await import('@nestjs/common');
     try {
       const { sub, email, emailVerificado = true } = JSON.parse(idToken);
       if (!sub || !email || !emailVerificado) throw new Error('inválido');
       return { sub, email: String(email).toLowerCase() };
     } catch {
-      throw new UnauthorizedException('Não foi possível entrar com o Google. Tente de novo.');
+      throw new UnauthorizedError('Não foi possível entrar com o Google. Tente de novo.');
     }
   }
 }
@@ -45,7 +49,7 @@ export async function criarAppDeTeste(
   opcoes: { relogio?: Relogio } = {},
 ): Promise<{ app: INestApplication; emails: EmailMemoria }> {
   const modulo = await Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(GoogleService)
+    .overrideProvider(VERIFICADOR_GOOGLE)
     .useValue(new GoogleSimulado())
     .overrideProvider(Relogio)
     .useValue(opcoes.relogio ?? new Relogio())

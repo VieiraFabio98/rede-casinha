@@ -11,8 +11,8 @@ import 'dotenv/config';
 
 import { PrismaPg } from '@prisma/adapter-pg';
 
-import { destino, type Ponto } from '../src/comum/geo.js';
-import { normalizarApelido } from '../src/comum/texto.js';
+import { destino, type Ponto } from '../src/shared/domain/geo.js';
+import { normalizarApelido } from '../src/shared/domain/texto.js';
 import {
   AnimaisAtendidos,
   NivelAcesso,
@@ -22,7 +22,7 @@ import {
   TipoNecessidade,
   Urgencia,
 } from '../src/generated/prisma/client.js';
-import { gerarLocalizacaoPublica } from '../src/modulos/localizacao/localizacao-publica.js';
+import { gerarLocalizacaoPublica } from '../src/modulos/localizacao/domain/localizacao-publica.js';
 
 const DOMINIO_SEED = 'seed.test';
 const CENTRO: Ponto = {

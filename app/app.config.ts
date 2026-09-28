@@ -22,12 +22,28 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // Fotos pelo Photo Picker do sistema, sem permissão de galeria (RNF12): a Play pede
+    // justificativa para estas e a chance de reprovação é alta.
+    blockedPermissions: [
+      'android.permission.READ_MEDIA_IMAGES',
+      'android.permission.READ_MEDIA_VIDEO',
+      'android.permission.READ_EXTERNAL_STORAGE',
+      'android.permission.WRITE_EXTERNAL_STORAGE',
+    ],
   },
   plugins: [
     'expo-router',
     '@maplibre/maplibre-react-native',
     // Só localização em primeiro plano (centralizar o mapa e, na T1.6, cadastrar casinha).
     'expo-location',
+    // Câmera só no toque em "Tirar foto"; sem microfone (nada de vídeo).
+    [
+      'expo-image-picker',
+      {
+        cameraPermission: 'Para fotografar a casinha.',
+        microphonePermission: false,
+      },
+    ],
     [
       'expo-splash-screen',
       {

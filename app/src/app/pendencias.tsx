@@ -1,5 +1,9 @@
+import { useRouter } from 'expo-router';
 import { Alert, FlatList, StyleSheet, View } from 'react-native';
 
+import { cadastrarMesmoAssim, desistirDoCadastro } from '@/api/cadastro';
+import type { CandidataDuplicata } from '@/api/tipos';
+import { Candidatas } from '@/cadastro/candidatas';
 import { Botao } from '@/components/botao';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -20,8 +24,32 @@ function confirmarDescarte(item: ItemOutbox) {
   ]);
 }
 
+/** Cadastro que bateu numa casinha a até 30 m (RN04): a pessoa decide se é a mesma. */
+function Duplicata({ item }: { item: ItemOutbox }) {
+  const router = useRouter();
+  const candidatas = (item.detalheErro ?? []) as CandidataDuplicata[];
+  return (
+    <>
+      <ThemedText type="small">{textos.novaCasinha.duplicataExplicacao}</ThemedText>
+      <Candidatas
+        candidatas={candidatas}
+        aoEscolher={async (c) => {
+          await desistirDoCadastro(item.id);
+          router.push({ pathname: '/casinha/[id]', params: { id: c.id } });
+        }}
+      />
+      <Botao
+        titulo={textos.novaCasinha.eNova}
+        variante="secundario"
+        onPress={() => void cadastrarMesmoAssim(item.id)}
+      />
+    </>
+  );
+}
+
 function Item({ item }: { item: ItemOutbox }) {
   const comErro = item.status === 'erro_permanente';
+  const duplicata = comErro && item.codigoErro === 'possivel_duplicata';
   return (
     <ThemedView
       type="backgroundElement"
@@ -33,7 +61,10 @@ function Item({ item }: { item: ItemOutbox }) {
         {tempoRelativo(new Date(item.criadoEm).toISOString())} ·{' '}
         {comErro ? t.statusErro : item.status === 'enviando' ? t.statusEnviando : t.statusPendente}
       </ThemedText>
-      {item.ultimoErro && <ThemedText type="small">{t.ultimaFalha(item.ultimoErro)}</ThemedText>}
+      {item.ultimoErro && !duplicata && (
+        <ThemedText type="small">{t.ultimaFalha(item.ultimoErro)}</ThemedText>
+      )}
+      {duplicata && <Duplicata item={item} />}
       {comErro && (
         <Botao titulo={t.descartar} variante="texto" onPress={() => confirmarDescarte(item)} />
       )}

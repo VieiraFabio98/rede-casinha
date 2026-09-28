@@ -30,6 +30,9 @@ function armazemEmMemoria(): ArmazemOutbox & { itens: Map<string, ItemOutbox> } 
     async recuperarInterrompidos() {
       for (const i of itens.values()) if (i.status === 'enviando') i.status = 'pendente';
     },
+    async removerDoUsuario(u) {
+      for (const i of doUsuario(u)) itens.delete(i.id);
+    },
     async liberarEspera(u) {
       for (const i of doUsuario(u)) if (i.status === 'pendente') i.proximaTentativaEm = null;
     },
@@ -50,6 +53,8 @@ function novoItem(dados: Partial<ItemOutbox> = {}): ItemOutbox {
     tentativas: 0,
     proximaTentativaEm: null,
     ultimoErro: null,
+    codigoErro: null,
+    detalheErro: null,
     criadoEm: sequencia,
     ...dados,
   };
@@ -170,6 +175,22 @@ describe('worker da outbox', () => {
     // Rodar de novo não tenta o item com erro permanente.
     await worker.processar('u1');
     expect(api.enviar).toHaveBeenCalledTimes(2);
+  });
+
+  it('guarda o código e os dados do erro (ex.: candidatas de uma duplicata)', async () => {
+    const { armazem, api, worker } = montar();
+    const cadastro = novoItem();
+    await armazem.inserir(cadastro);
+    const candidatas = [{ id: 'c9', nome: 'Casinha vizinha', miniatura: null }];
+    api.falharCom(() => new ErroApi(409, 'Já existe perto', 'possivel_duplicata', candidatas));
+
+    await worker.processar('u1');
+
+    expect(armazem.itens.get(cadastro.id)).toMatchObject({
+      status: 'erro_permanente',
+      codigoErro: 'possivel_duplicata',
+      detalheErro: candidatas,
+    });
   });
 
   it('reenviar a mesma operação (id repetido) não duplica no servidor', async () => {

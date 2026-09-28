@@ -1,14 +1,14 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Ponto } from '../src/comum/geo.js';
-import { normalizarApelido } from '../src/comum/texto.js';
+import type { Ponto } from '../src/shared/domain/geo.js';
+import { normalizarApelido } from '../src/shared/domain/texto.js';
 import {
   NivelAcesso,
   type PrismaClient,
   type SituacaoCasinha,
   type StatusModeracao,
 } from '../src/generated/prisma/client.js';
-import { gerarLocalizacaoPublica } from '../src/modulos/localizacao/localizacao-publica.js';
+import { gerarLocalizacaoPublica } from '../src/modulos/localizacao/domain/localizacao-publica.js';
 
 const PRACA_DA_SE: Ponto = { lat: -23.5505, lng: -46.6333 };
 

@@ -1,0 +1,22 @@
+meta {
+  name: 1 Pedir código
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/auth/codigo
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{email}}"
+  }
+}
+
+docs {
+  Preencha `email` no ambiente (a conta precisa ser moderador ou admin).
+  Em desenvolvimento o código aparece no log da API; em produção, chega por e-mail.
+}

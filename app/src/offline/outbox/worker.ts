@@ -22,6 +22,8 @@ export function ehErroTemporario(erro: unknown): boolean {
 }
 
 const mensagemDoErro = (erro: unknown) => (erro instanceof Error ? erro.message : String(erro));
+const codigoDoErro = (erro: unknown) => (erro instanceof ErroApi ? (erro.codigo ?? null) : null);
+const detalheDoErro = (erro: unknown) => (erro instanceof ErroApi ? (erro.dados ?? null) : null);
 
 export interface ResultadoRodada {
   enviados: number;
@@ -78,6 +80,8 @@ export function criarWorker({
             tentativas,
             proximaTentativaEm: proximaEm,
             ultimoErro: mensagemDoErro(erro),
+            codigoErro: codigoDoErro(erro),
+            detalheErro: detalheDoErro(erro),
           });
           aoMudar?.();
           return { enviados, proximaEm };
@@ -86,6 +90,8 @@ export function criarWorker({
           status: 'erro_permanente',
           tentativas,
           ultimoErro: mensagemDoErro(erro),
+          codigoErro: codigoDoErro(erro),
+          detalheErro: detalheDoErro(erro),
         });
       }
       aoMudar?.();

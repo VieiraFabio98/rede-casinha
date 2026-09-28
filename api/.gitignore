@@ -9,3 +9,6 @@ coverage
 
 # Client gerado pelo Prisma (npm install roda o prisma generate)
 /src/generated/prisma
+
+# Fotos do driver de disco (ARMAZENAMENTO_PASTA)
+/armazenamento

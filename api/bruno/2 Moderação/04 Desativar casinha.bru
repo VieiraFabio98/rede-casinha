@@ -1,0 +1,24 @@
+meta {
+  name: Desativar casinha
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/admin/casinhas/{{casinhaId}}/desativar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "motivo": ""
+  }
+}
+docs {
+  A casinha sai do mapa (situacao = inativa). Use quando ela foi removida ou destruída.
+}

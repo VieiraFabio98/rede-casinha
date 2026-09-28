@@ -1,0 +1,25 @@
+meta {
+  name: Bloquear / desbloquear
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/admin/usuarios/{{usuarioId}}/bloqueio
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "ate": "2026-12-31T23:59:00-03:00",
+    "motivo": ""
+  }
+}
+docs {
+  Bloqueado não vê o mapa nem faz ações até a data. Para desbloquear, mande "ate": null.
+}

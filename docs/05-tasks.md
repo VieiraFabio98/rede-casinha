@@ -81,7 +81,7 @@ O **teste fechado de 14 dias com 12 testadores** é exigido de contas pessoais n
   - [x] Prisma: `prisma init`, `DATABASE_URL` vindo do `.env`, `PrismaModule` global com um `PrismaService` (conecta no `onModuleInit`). (Prisma 7.10 com `@prisma/adapter-pg`; config em `prisma7.config.ts`; client em `src/generated/prisma`.)
   - [x] `@nestjs/config` com validação das variáveis de ambiente na inicialização (a API não sobe com configuração faltando). (Esquema Zod em `src/config/ambiente.ts`.)
   - [x] `SaudeModule` com `GET /saude` (checa o banco com `SELECT 1`; 503 se o banco estiver fora).
-  - [x] Estrutura por módulo do Nest: `src/modulos/<modulo>/` (`*.module.ts`, `*.controller.ts`, `*.service.ts`, `dto/`) + `src/infra/` (prisma, armazenamento, e-mail). (Hoje existem `infra/prisma` e `modulos/saude`; armazenamento e e-mail entram na T1.5 e na T0.5.)
+  - [x] Estrutura por módulo do Nest: `src/modulos/<modulo>/` (`*.module.ts`, `*.controller.ts`, `*.service.ts`, `dto/`) + `src/infra/` (prisma, armazenamento, e-mail). (Hoje existem `infra/prisma` e `modulos/saude`; armazenamento e e-mail entram na T1.5 e na T0.5.) **Atualizado pela D02:** cada módulo agora tem `domain/`, `application/` e `infra/`, e o compartilhado fica em `src/shared/` ([04-arquitetura.md](04-arquitetura.md#camadas-de-um-módulo)).
   - [x] Lint + Prettier + `tsc --noEmit` em `npm run check`; testes unitários em `npm test` e e2e (supertest) com o banco `rede_casinha_test` em `npm run test:e2e`. (Seguindo o padrão do Nest 12: **oxlint** no lugar do ESLint e **Vitest** no lugar do Jest.)
   - [x] `Dockerfile` da API (multi-stage) para usar na T0.11. (Roda `prisma migrate deploy` antes de subir; healthcheck em `/saude`; ~560 MB, o peso vem do CLI do Prisma.)
 
@@ -211,23 +211,27 @@ O **teste fechado de 14 dias com 12 testadores** é exigido de contas pessoais n
 - [ ] **T1.5 — Fotos: captura, compressão e upload**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T0.3, T1.4
   - Pronto quando: uma foto de 12 MP vira ~120 KB + miniatura de ~25 KB **sem EXIF** (verificado com `exiftool`); o upload é retomado depois de ficar offline; o app não pede permissão de galeria.
-  - [ ] `expo-image-picker` (câmera + Photo Picker). Bloquear `READ_MEDIA_IMAGES`/`READ_EXTERNAL_STORAGE` com `android.blockedPermissions`.
-  - [ ] `expo-image-manipulator`: resize para 1024 e 320 px, JPEG com qualidade 0,7.
-  - [ ] Copiar os arquivos para `documentDirectory/pendentes/`.
-  - [ ] API `PUT /fotos/:id` (multipart, idempotente pelo id do celular; máx. 1 MB; só `image/jpeg`) grava pela interface de armazenamento (driver de disco no MVP) e registra em `Foto`.
-  - [ ] API `GET /fotos/:id?exp&assinatura`: serve a foto só com URL assinada (HMAC, validade de 1 h).
-  - [ ] Upload dentro do worker; apagar o arquivo local depois do sucesso.
-  - [ ] Aviso na câmera: "Fotografe a casinha de perto. Evite rostos, placas de carro e fachadas."
+  - [x] `expo-image-picker` (câmera + Photo Picker). Bloquear `READ_MEDIA_IMAGES`/`READ_EXTERNAL_STORAGE` com `android.blockedPermissions`. (Também `READ_MEDIA_VIDEO`, `WRITE_EXTERNAL_STORAGE` e `RECORD_AUDIO`; a câmera pede permissão só no toque em "Tirar foto".)
+  - [x] `expo-image-manipulator`: resize para 1024 e 320 px, JPEG com qualidade 0,7. (Lado maior limitado, sem ampliar: `app/src/fotos/`.)
+  - [x] Copiar os arquivos para `documentDirectory/pendentes/`.
+  - [x] API `PUT /fotos/:id` (multipart, idempotente pelo id do celular; máx. 1 MB; só `image/jpeg`) grava pela interface de armazenamento (driver de disco no MVP) e registra em `Foto`. (Drivers `disco`, `s3` e `memoria` por `ARMAZENAMENTO_DRIVER`; o S3 usa o bucket privado `rede-casinha-bucket`. O servidor tira EXIF/XMP de novo antes de gravar. Foto de perfil: criador, adotante ou moderador, até 5; foto de atividade: só na própria, uma por atividade, apagada em 90 dias por job diário. 20 fotos/dia.)
+  - [x] API `GET /fotos/:id?exp&assinatura`: serve a foto só com URL assinada (HMAC, validade de 1 h). (Mais `/fotos/:id/miniatura`; validade de 1 h a 1 h 30, em blocos de 30 min para o cache do app. O detalhe da casinha devolve `fotos[]` e `atividades[].foto`.)
+  - [x] Upload dentro do worker; apagar o arquivo local depois do sucesso. (Também ao descartar a pendência e ao excluir a conta; excluir a conta apaga os arquivos no servidor.)
+  - [x] Aviso na câmera: "Fotografe a casinha de perto. Evite rostos, placas de carro e fachadas."
+  - Testado no aparelho em 28/09/2026 (Redmi Note 13, dev build novo): foto de 12 MP com GPS no EXIF escolhida pelo Photo Picker virou 1024×768 (65 KB) + 320×240 (9 KB), sem EXIF no celular e no S3; o APK final não tem `READ_MEDIA_IMAGES`/`READ_EXTERNAL_STORAGE`/`RECORD_AUDIO`; upload retomado depois de a API ficar inacessível. (O teste pegou um bug: o `fetch` do Expo não aceita `{ uri, name, type }` no `FormData`; o anexo agora é o `File` do expo-file-system.)
+  - **Pendente para concluir:** tirar uma foto com a **câmera** no aparelho (só a galeria foi testada).
 
 - [ ] **T1.6 — Cadastro de casinha**
   - Prioridade: **alta** · Esforço: **G** · Depende de: T1.1, T1.4, T1.5
   - Pronto quando: é possível cadastrar com GPS (precisão ≤ 30 m ou ajuste manual confirmado) online e offline; a duplicata a até 30 m é detectada; a casinha aparece no mapa de outro aparelho depois do sync.
-  - [ ] Tela de captura de posição: `watchPositionAsync` com alta precisão, mostrando "precisão: 12 m" até estabilizar (timeout de 60 s).
-  - [ ] Ajuste manual do pino (máx. 50 m da leitura do GPS) com confirmação.
-  - [ ] Formulário: nome, animais, descrição, 1 a 3 fotos (react-hook-form + zod).
-  - [ ] API `POST /casinhas` (idempotente pelo id do celular) com checagem de duplicata (pré-filtro por caixa de ±0,0005° + haversine ≤ 30 m) e resposta `possivel_duplicata`. Offline: a checagem acontece no sync; se houver candidato, o item vai para "Pendências" com a escolha "É esta" ou "É nova".
-  - [ ] O criador vira adotante automaticamente.
-  - [ ] Evento `casinha_cadastrada` no PostHog.
+  - [x] Tela de captura de posição: `watchPositionAsync` com alta precisão, mostrando "precisão: 12 m" até estabilizar (timeout de 60 s). (Guarda a melhor leitura; depois de 60 s sem chegar a 30 m, sugere o ajuste manual. `app/src/app/casinha/nova.tsx` e `app/src/cadastro/`.)
+  - [x] Ajuste manual do pino (máx. 50 m da leitura do GPS) com confirmação. (Pino fixo no centro, a pessoa arrasta o mapa; fica vermelho e não confirma além de 50 m.)
+  - [x] Formulário: nome, animais, descrição, 1 a 3 fotos (react-hook-form + zod). (Sem react-hook-form/zod, no padrão das outras telas: estado local e as regras de `app/src/domain/cadastro.ts`, com teste. Fotos obrigatórias: pelo menos 1.)
+  - [x] API `POST /casinhas` (idempotente pelo id do celular) com checagem de duplicata (pré-filtro por caixa de ±0,0005° + haversine ≤ 30 m) e resposta `possivel_duplicata`. Offline: a checagem acontece no sync; se houver candidato, o item vai para "Pendências" com a escolha "É esta" ou "É nova". (Precisão > 30 m sem `ajusteManual`: 422. Duplicata conta no limite de 10/dia; `forcar` cria em revisão. 5 cadastros/dia, 20 para o verificado. Candidatas só visíveis e não inativas, com nome e miniatura, sem coordenadas. No app, o cadastro e as fotos vão num item só da fila; online, a tela espera a resposta e mostra "É uma destas?" na hora.)
+  - [x] O criador vira adotante automaticamente.
+  - [ ] Evento `casinha_cadastrada` no PostHog. (Depende da T0.7, que ainda não configurou o PostHog.)
+  - Testado no aparelho em 28/09/2026: GPS real (42 m → 10 m em ~30 s), ajuste do pino (vermelho e bloqueado além de 50 m, com confirmação), cadastro online com foto, cadastro offline com sync, duplicata detectada no sync e resolvida em "Pendências" com "É outra" (criada em revisão), casinha visível para outro usuário só com a localização aproximada.
+  - **Pendente para concluir:** evento do PostHog (quando a T0.7 existir).
 
 - [x] **T1.7 — Necessidades, atendimentos e check-in**
   - Prioridade: **alta** · Esforço: **G** · Depende de: T1.3, T1.4
@@ -239,36 +243,43 @@ O **teste fechado de 14 dias com 12 testadores** é exigido de contas pessoais n
   - [x] Testes e2e das regras RN02 e RN03. (18 testes em `test/necessidades.e2e-spec.ts`, com relógio controlado: prazos, 12 h entre reconfirmações, 24 h de contestação, `ja_atendida`, idempotência, concorrência, `validado_local` e limite diário.)
   - [x] Validado no aparelho em 25/09/2026: "Ainda precisa", "Abasteci" (casinha fica verde e aparece "Resolvido há pouco"), "Não foi resolvido" (reabre e volta a urgente), "O que está faltando?" com 2 tipos e "Passei aqui". Offline: "Abasteci" na fila enquanto outra pessoa atendeu pelo servidor; ao chegar, o app mostrou "Alguém já tinha atendido. Obrigado!".
 
-- [ ] **T1.8 — Status e expiração automáticos**
+- [x] **T1.8 — Status e expiração automáticos**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T0.4, T1.7
   - Pronto quando: o status muda na hora a cada ação (transação) e com o tempo (jobs); testes simulando tempo cobrem os 4 status e todos os prazos de expiração.
   - [x] Serviço `recalcularStatus(casinhaId, tx)` implementando a RN01, chamado dentro da mesma transação de toda escrita que afeta a casinha. (Feito na T1.7: `StatusService.recalcular` + regra pura `calcularStatus` com testes.)
-  - [ ] Jobs com `@nestjs/schedule`: `@Cron` `expirar-necessidades` (a cada 15 min) e `recalcular-status` (a cada 1 h), idempotentes (rodar duas vezes não causa efeito extra).
+  - [x] Jobs com `@nestjs/schedule`: `@Cron` `expirar-necessidades` (a cada 15 min) e `recalcular-status` (a cada 1 h), idempotentes (rodar duas vezes não causa efeito extra). (`TarefasStatusService`: a lógica fica em métodos comuns, que os testes chamam com o relógio simulado; os `@Cron` só disparam. Cada casinha é travada e relida antes de gravar, então um "ainda precisa" que chega junto não é expirado por engano. Lotes de 500; uma rodada por vez de cada job. `recalcular-status` roda no minuto 5 de cada hora, para não coincidir com a expiração. Desligados nos testes. Na primeira rodada contra o banco de desenvolvimento, expirou as 8 necessidades vencidas do seed.)
+  - [x] Testes e2e com o tempo simulado (`test/status.e2e-spec.ts`, 17 testes): os 7 prazos de expiração (1 minuto antes não expira, no prazo expira), ok → sem notícias em 7 dias, atenção → urgente com água/ração há mais de 48 h, casinha inativa ignorada, idempotência e mais de um lote.
   - [x] Função `prazoExpiracao(tipo)` com a tabela da RN02. (Feito na T1.7, em `modulos/status/regras.ts`.)
   - [x] Relógio injetável (`agora()`) para testar as transições por tempo sem esperar. (Feito na T1.7: `Relogio` global; nos e2e, `RelogioDeTeste`.)
 
-- [ ] **T1.9 — Adoção e "Minhas casinhas"**
+- [x] **T1.9 — Adoção e "Minhas casinhas"**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T1.1, T1.3
   - Pronto quando: é possível adotar estando a ≤ 100 m (ou sendo o criador); a 4ª adoção é recusada; a aba "Minhas casinhas" lista as casinhas com status e necessidades; dá para deixar de adotar.
-  - [ ] API `POST /casinhas/:id/adocao` (resposta só `ok`/`nao_permitido`) e `DELETE /casinhas/:id/adocao`.
-  - [ ] Aba "Minhas casinhas" ordenada por severidade (vermelho primeiro).
-  - [ ] Texto explicando o compromisso: "Adotar = passar pelo menos 1 vez por semana e manter o status atualizado".
+  - [x] API `POST /casinhas/:id/adocao` (resposta só `ok`/`nao_permitido`) e `DELETE /casinhas/:id/adocao`. (Módulo `adocoes`. Trava a casinha, então 5 pedidos simultâneos geram só 3 adoções. 3 tentativas por dia contando as recusadas (RN06), para ninguém "caçar" a casinha tentando de vários lugares. Já adotante: `ok` sem gastar tentativa. Deixar de adotar é idempotente e registra `fim_adocao`. A trava das escritas virou `travarCasinhaParaAcao`, compartilhada com `necessidades`. 11 testes e2e em `test/adocoes.e2e-spec.ts`.)
+  - [x] Aba "Minhas casinhas" ordenada por severidade (vermelho primeiro). (A API ordena: urgente, atenção, sem notícias, ok; empate por nome. Cartão com a cor do status, necessidades e "Você adota"/"Você cadastrou"; puxar para atualizar; offline mostra o cache.)
+  - [x] Texto explicando o compromisso: "Adotar = passar pelo menos 1 vez por semana e manter o status atualizado". (No topo da aba, embaixo do botão "Adotar esta casinha" e na confirmação antes de adotar.)
+  - [x] No app, adotar é **online** (não passa pela fila offline): a resposta depende de onde a pessoa está agora. O app pede a localização com explicação e manda a posição atual do GPS.
+  - [x] Validado no aparelho em 28/09/2026: a aba lista as 3 casinhas de `Teste_T06` da mais grave para a mais tranquila; "Deixar de adotar" voltou o local para aproximado e registrou no histórico; "Adotar" com o celular longe da casinha (fictícia) foi recusado com a mensagem certa, sem distância. A adoção de teste foi restaurada no banco depois.
 
-- [ ] **T1.10 — Denúncias e moderação mínima**
+- [x] **T1.10 — Denúncias e moderação mínima**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T1.3
   - Pronto quando: qualquer logado denuncia casinha, foto, necessidade ou usuário; 3 denúncias ocultam automaticamente; você consegue moderar tudo pelas rotas `/admin`.
-  - [ ] API `POST /denuncias` + ocultação automática (3 denúncias de contas com ≥ 7 dias).
-  - [ ] Rotas `/admin/*` (exigem nível `moderador`): fila de moderação, ocultar/restaurar, desativar casinha, mesclar casinhas, promover a verificado, bloquear usuário. Toda ação registrada.
-  - [ ] Coleção do **Bruno** (cliente HTTP) versionada em `api/bruno/` para usar as rotas `/admin` sem precisar de tela.
-  - [ ] Alerta diário por e-mail se a fila tiver itens (`@Cron` → Resend) — opcional.
-  - [ ] Documentar o processo em `docs/moderacao.md` (critérios para verificar alguém; prazo de 48 h por denúncia).
+  - [x] API `POST /denuncias` + ocultação automática (3 denúncias de contas com ≥ 7 dias). (Módulo `denuncias`. Uma denúncia por pessoa e alvo; 20 por dia (RN06); resposta sempre `ok`, sem revelar contagem. Casinha e foto ficam `oculto_auto`; necessidade, que não tem campo de moderação, é **cancelada** (sai do status). Perfil **nunca** é bloqueado automaticamente: só vai para a fila. Também `POST /casinhas/:id/desativacao` ("a casinha não existe mais", RF02.7), idempotente pelo `atividadeId`.)
+  - [x] Rotas `/admin/*` (exigem nível `moderador`): fila de moderação, ocultar/restaurar, desativar casinha, mesclar casinhas, promover a verificado, bloquear usuário. Toda ação registrada. (Módulo `moderacao`. A fila agrupa denúncias por alvo (prioritárias primeiro), casinhas em revisão, pedidos de desativação e possíveis duplicatas a até 30 m (consulta no módulo `localizacao`). Ocultar/restaurar fecham as denúncias do alvo como procedentes/improcedentes. Nova rota `POST /admin/casinhas/:id/ativar` (aprova revisão, reativa ou mantém após pedido de desativação). Mesclar leva histórico, fotos, necessidades e adotantes, respeitando "uma aberta por tipo" e "até 3 adotantes". Criar moderador/admin e mexer neles: só admin; ninguém modera a própria conta. Motivo obrigatório. 17 testes e2e em `test/moderacao.e2e-spec.ts`.)
+  - [x] Coleção do **Bruno** (cliente HTTP) versionada em `api/bruno/` para usar as rotas `/admin` sem precisar de tela. (Login por código com o token guardado automaticamente + uma requisição por rota, com documentação em cada uma.)
+  - [ ] Alerta diário por e-mail se a fila tiver itens (`@Cron` → Resend) — opcional. **Não feito:** depende da conta no Resend (pendente da T0.5); com o volume do piloto, abrir a fila no Bruno 1 vez por dia resolve.
+  - [x] Documentar o processo em `docs/moderacao.md` (critérios para verificar alguém; prazo de 48 h por denúncia). (Também: como entrar pelo Bruno, o que cada parte da fila pede, a ocultação automática e uma tabela de referência para bloqueios.)
+  - [x] App: "Denunciar" no detalhe abre uma tela que pergunta o alvo (a casinha ou um dos pedidos abertos) e o motivo; "A casinha não existe mais" abre uma tela com motivos rápidos. As duas passam pela fila offline. Denunciar foto entra com a T1.5; perfil, quando houver perfil público.
+  - [x] Validado no aparelho em 28/09/2026: denúncia de um pedido ("é falso") e pedido de desativação ("foi retirada do lugar") chegaram à fila `/admin` com os dados certos; resolvidos pela API como moderador (denúncia improcedente, casinha mantida), com as duas ações registradas em `acoes_moderacao`.
 
 - [ ] **T1.11 — Perfil, configurações e exclusão de conta**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T0.5, T0.8
   - Pronto quando: a conta pode ser excluída de dentro do app (com confirmação) e pelo site; depois da exclusão, as contribuições aparecem como "Usuário removido" e as fotos somem do armazenamento.
-  - [ ] Tela de perfil: apelido, nível, contagem de contribuições, links para a política e os termos, "Sair", "Excluir conta".
-  - [ ] API `DELETE /me` implementando a RN07 (anonimização numa transação + remoção dos arquivos de foto).
-  - [ ] Pedido de exportação de dados: botão que abre um e-mail pré-preenchido (MVP manual).
+  - **Pendente para concluir:** a exclusão **pelo site** é a página "Excluir minha conta" da T0.8 (login por código + `DELETE /me`; ao publicar o site, liberar o domínio dele no CORS da API). (Os arquivos das fotos já são apagados junto, desde a T1.5.)
+  - [x] Tela de perfil: apelido, nível, contagem de contribuições, links para a política e os termos, "Sair", "Excluir conta". (Contagens em `GET /me/contagens`. Os links aparecem quando `EXPO_PUBLIC_SITE_URL` existir (T0.8).)
+  - [x] API `DELETE /me` implementando a RN07 (anonimização numa transação + remoção dos arquivos de foto). (Apaga fotos (registros), códigos de login e o usuário; em cascata, perfil, sessões, adoções, auditoria de acessos e limites; o histórico fica sem autor ("Usuário removido"). Vale com cadastro pendente e com conta bloqueada. 4 testes e2e em `test/conta.e2e-spec.ts`. No app: tela com o que é apagado e o que fica, confirmação digitando EXCLUIR; também apaga a fila offline da conta.)
+  - [x] Pedido de exportação de dados: botão que abre um e-mail pré-preenchido (MVP manual). (Aparece quando `EXPO_PUBLIC_EMAIL_CONTATO` estiver no `.env` do app: o e-mail do projeto é da T0.1.)
+  - [x] Validado no aparelho em 28/09/2026: perfil com as contagens; conta descartável criada, com um "passei aqui", excluída pelo app (digitando EXCLUIR): usuário, perfil, sessões e códigos sumiram do banco, o "passei aqui" ficou sem autor e o app voltou para a tela de entrada.
 
 - [ ] **T1.12 — Onboarding, permissões e estados de tela**
   - Prioridade: **média** · Esforço: **M** · Depende de: T1.2

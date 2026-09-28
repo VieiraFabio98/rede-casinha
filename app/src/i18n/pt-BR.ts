@@ -60,7 +60,6 @@ export const textos = {
     tentarDeNovo: 'Tentar de novo',
     nenhumaNoFiltro: 'Nenhuma casinha com esse filtro nesta área.',
     novaCasinha: 'Cadastrar casinha',
-    novaCasinhaEmBreve: 'O cadastro de casinhas chega na próxima versão do app.',
     precisaDe: 'Precisa de',
     nadaFaltando: 'Nada faltando agora',
     localExato: 'Local exato',
@@ -109,6 +108,124 @@ export const textos = {
     tentarDeNovo: 'Tentar de novo',
     semMapas: 'Não achamos um app de mapas no celular.',
   },
+  novaCasinha: {
+    titulo: 'Cadastrar casinha',
+    // Passo 1: posição
+    passoPosicao: 'Onde fica a casinha?',
+    explicacaoPosicao:
+      'Fique ao lado da casinha. Vamos usar o GPS do celular para marcar o lugar certo.',
+    semPermissao:
+      'Sem acesso à localização não dá para cadastrar. Libere a localização e tente de novo.',
+    tentarDeNovo: 'Tentar de novo',
+    buscandoGps: 'Procurando o sinal do GPS…',
+    precisao: (m: number) => `Precisão: ${Math.round(m)} m`,
+    precisaoBoa: 'Boa precisão. Pode usar esta posição.',
+    melhorando: (limite: number) =>
+      `Esperando o GPS chegar a ${limite} m. Ao ar livre e longe de prédios fica mais rápido.`,
+    gpsNaoMelhorou:
+      'O GPS não chegou à precisão necessária. Ajuste o pino no mapa para marcar a casinha.',
+    semGps: 'Não conseguimos sua localização. Confira se o GPS do celular está ligado.',
+    usarPosicao: 'Usar esta posição',
+    ajustarNoMapa: 'Ajustar no mapa',
+    // Ajuste do pino
+    passoAjuste: 'Arraste o mapa até o pino ficar em cima da casinha',
+    ajusteLonge: (m: number) => `O pino pode ficar a até ${m} m da sua posição no GPS.`,
+    confirmarPino: 'A casinha fica aqui',
+    confirmarTitulo: 'Confirmar o local?',
+    confirmarMensagem:
+      'Confira se o pino está em cima da casinha. Outras pessoas vão usar este ponto para achá-la.',
+    confirmar: 'Confirmar',
+    cancelar: 'Cancelar',
+    voltar: 'Voltar',
+    // Passo 2: dados
+    passoDados: 'Sobre a casinha',
+    nome: 'Nome',
+    dicaNome: 'Ex.: Casinha da Praça do Rosário',
+    animais: 'Para quais animais?',
+    descricao: 'Descrição (opcional)',
+    dicaDescricao: 'Ex.: ao lado do banco, embaixo da árvore',
+    fotos: 'Fotos da casinha',
+    dicaFotos: (min: number, max: number) => `De ${min} a ${max} fotos.`,
+    localMarcado: (m: number, manual: boolean) =>
+      manual
+        ? 'Local marcado no mapa.'
+        : `Local marcado pelo GPS (precisão de ${Math.round(m)} m).`,
+    mudarLocal: 'Mudar local',
+    faltaNome: 'Dê um nome de 3 a 60 letras.',
+    faltaAnimais: 'Escolha para quais animais.',
+    faltaFoto: 'Adicione pelo menos uma foto.',
+    cadastrar: 'Cadastrar casinha',
+    // Envio
+    enviando: 'Cadastrando…',
+    // Alertas: título curto + mensagem (no Android o título corta depois de 2 linhas).
+    cadastradaTitulo: 'Casinha cadastrada!',
+    cadastrada: 'Você é o adotante dela.',
+    emRevisao: 'Como existe outra bem perto, a moderação vai conferir.',
+    salvaOfflineTitulo: 'Salvo no celular',
+    salvaOffline: 'Sem internet agora. O cadastro será enviado sozinho quando a conexão voltar.',
+    erroEnvioTitulo: 'Não foi possível cadastrar',
+    erroEnvio: (motivo: string) => `${motivo} O cadastro ficou em "Pendências".`,
+    erroSalvar: 'Não foi possível salvar o cadastro. Tente de novo.',
+    // Duplicata (RN04)
+    duplicataTitulo: 'É uma destas?',
+    duplicataExplicacao:
+      'Já existe casinha a menos de 30 m daqui. Se for uma destas, abra ela em vez de cadastrar de novo.',
+    duplicataPendente: 'Já existe casinha a menos de 30 m. É uma destas?',
+    eEsta: 'É esta',
+    eNova: 'É outra, cadastrar mesmo assim',
+    semFoto: 'Sem foto',
+  },
+  fotos: {
+    titulo: 'Fotos',
+    adicionar: 'Adicionar foto',
+    escolherTitulo: 'Foto da casinha',
+    aviso: 'Fotografe a casinha de perto. Evite rostos, placas de carro e fachadas.',
+    camera: 'Tirar foto',
+    galeria: 'Galeria',
+    cancelar: 'Cancelar',
+    semPermissaoCameraTitulo: 'Sem acesso à câmera',
+    semPermissaoCamera: 'Libere nas configurações do celular ou escolha uma foto da galeria.',
+    erroCamera: 'Não foi possível abrir a câmera ou a galeria.',
+    erroPreparar: 'Não foi possível preparar a foto. Tente outra.',
+    preparando: 'Preparando a foto…',
+    naoEstaMaisNoCelular: 'A foto não está mais no celular.',
+    ampliar: (n: number, total: number) => `Foto ${n} de ${total}. Toque para ampliar.`,
+    fotoDaAtividade: 'Foto da atividade. Toque para ampliar.',
+    remover: (n: number) => `Remover foto ${n}`,
+    fechar: 'Fechar',
+    semFotos: 'Nenhuma foto ainda.',
+  },
+  adocao: {
+    compromisso:
+      'Adotar = passar pelo menos 1 vez por semana e manter o status atualizado. Quem adota vê o local exato da casinha.',
+    confirmarTitulo: 'Adotar esta casinha?',
+    confirmar: 'Adotar',
+    cancelar: 'Cancelar',
+    buscandoPosicao: 'Conferindo se você está perto da casinha…',
+    adotou: 'Você adotou esta casinha! Agora ela aparece em "Minhas casinhas", com o local exato.',
+    naoPermitido:
+      'Não foi possível adotar. É preciso estar perto da casinha (a até 100 m), e cada casinha aceita até 3 adotantes.',
+    semPosicao:
+      'Não conseguimos sua localização. Para adotar, é preciso estar perto da casinha com a localização ligada.',
+    semConexao: 'Adotar precisa de internet. Tente de novo quando a conexão voltar.',
+    erro: 'Não foi possível adotar agora. Tente de novo.',
+    deixarTitulo: 'Deixar de adotar?',
+    deixarMensagem: 'Você deixa de ver o local exato desta casinha. Dá para adotar de novo depois.',
+    deixar: 'Deixar de adotar',
+    deixou: 'Você deixou de adotar esta casinha.',
+  },
+  minhas: {
+    titulo: 'Minhas casinhas',
+    compromisso: 'Adotar = passar pelo menos 1 vez por semana e manter o status atualizado.',
+    vazio:
+      'Você ainda não adotou nenhuma casinha. Quando estiver perto de uma, abra-a no mapa e toque em "Adotar esta casinha".',
+    criadaPorVoce: 'Você cadastrou',
+    voceAdota: 'Você adota',
+    carregando: 'Carregando suas casinhas…',
+    offline: (hora: string) => `Offline: mostrando dados de ${hora}`,
+    erro: 'Não foi possível carregar suas casinhas.',
+    tentarDeNovo: 'Tentar de novo',
+  },
   reportar: {
     titulo: 'O que está faltando?',
     escolha: 'Toque em tudo o que está faltando.',
@@ -128,6 +245,49 @@ export const textos = {
     campo: 'O que você viu',
     dica: 'Ex.: o pote continua vazio',
     enviar: 'Reabrir pedido',
+  },
+  denunciar: {
+    titulo: 'Denunciar',
+    oQue: 'O que você quer denunciar?',
+    aCasinha: 'A casinha',
+    oPedido: (tipo: string) => `O pedido de ${tipo}`,
+    motivo: 'Qual o problema?',
+    motivos: {
+      falsa: 'É falso (não existe ou está errado)',
+      duplicada: 'É uma casinha repetida no mapa',
+      ofensiva: 'Tem conteúdo ofensivo',
+      expoe_pessoa: 'Expõe uma pessoa (rosto, placa, casa)',
+      perigo_animais: 'Coloca os animais em perigo',
+      outro: 'Outro motivo',
+    },
+    descricao: 'Conte mais (opcional)',
+    dicaDescricao: 'Ajuda a moderação a decidir rápido',
+    enviar: 'Enviar denúncia',
+    obrigado: 'Obrigado. A moderação vai analisar.',
+    erro: 'Não foi possível guardar a denúncia. Tente de novo.',
+  },
+  desativacao: {
+    titulo: 'A casinha não existe mais',
+    explicacao:
+      'Se a casinha foi retirada ou destruída, conte o que aconteceu. A moderação confere antes de tirá-la do mapa.',
+    rapidos: ['Foi retirada do lugar', 'Foi destruída', 'Nunca existiu aqui'],
+    campo: 'O que aconteceu',
+    enviar: 'Avisar a moderação',
+    obrigado: 'Obrigado pelo aviso. A moderação vai conferir.',
+  },
+  excluirConta: {
+    titulo: 'Excluir minha conta',
+    oQueApaga:
+      'Apagamos de vez: seu e-mail, seu apelido, suas adoções e as fotos que você enviou. Você sai de todos os aparelhos.',
+    oQueFica:
+      'Fica, sem o seu nome: o histórico das casinhas (avisos, atendimentos, "passei aqui"), que aparece como "Usuário removido". Ele ajuda quem cuida dos animais.',
+    irreversivel: 'Isso não pode ser desfeito.',
+    confirmar: (palavra: string) => `Para confirmar, digite ${palavra}`,
+    palavra: 'EXCLUIR',
+    excluir: 'Excluir minha conta de vez',
+    excluida: 'Sua conta foi excluída.',
+    semConexao: 'Excluir a conta precisa de internet. Tente de novo quando a conexão voltar.',
+    erro: 'Não foi possível excluir a conta agora. Tente de novo.',
   },
   historico: {
     cadastro: 'cadastrou a casinha',
@@ -171,6 +331,10 @@ export const textos = {
       atender: 'Atendimento ("Abasteci")',
       contestar: 'Contestação ("Não foi resolvido")',
       check_in: '"Passei aqui, tudo ok"',
+      denunciar: 'Denúncia',
+      pedir_desativacao: '"A casinha não existe mais"',
+      enviar_foto: 'Foto',
+      cadastrar_casinha: 'Cadastro de casinha',
     } as Record<string, string>,
     operacaoDesconhecida: 'Ação',
   },
@@ -218,6 +382,18 @@ export const textos = {
   },
   perfil: {
     sair: 'Sair da conta',
+    contagens: (contribuicoes: number, atendimentos: number, adotadas: number) =>
+      `${contribuicoes} ${contribuicoes === 1 ? 'contribuição' : 'contribuições'} · ` +
+      `${atendimentos} ${atendimentos === 1 ? 'atendimento' : 'atendimentos'} · ` +
+      `${adotadas} ${adotadas === 1 ? 'casinha adotada' : 'casinhas adotadas'}`,
+    privacidade: 'Política de privacidade',
+    termos: 'Termos de uso',
+    meusDados: 'Pedir uma cópia dos meus dados',
+    assuntoDados: 'Pedido de cópia dos meus dados (LGPD)',
+    corpoDados: (apelido: string, email: string) =>
+      `Olá! Quero receber uma cópia dos meus dados na Rede Casinha.\n\nApelido: ${apelido}\nE-mail da conta: ${email}\n\n(Vocês respondem em até 15 dias.)`,
+    semEmail: 'Não achamos um app de e-mail no celular.',
+    excluir: 'Excluir minha conta',
     nivel: {
       colaborador: 'Colaborador',
       verificado: 'Verificado',

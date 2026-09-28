@@ -22,6 +22,8 @@ const MIGRATIONS = [
      criado_em INTEGER NOT NULL
    );
    CREATE INDEX outbox_usuario_ordem ON outbox (usuario_id, status, criado_em);`,
+  `ALTER TABLE outbox ADD COLUMN codigo_erro TEXT;
+   ALTER TABLE outbox ADD COLUMN detalhe_erro TEXT;`,
 ];
 
 async function migrar(db: SQLiteDatabase) {
@@ -46,8 +48,13 @@ interface Linha {
   tentativas: number;
   proxima_tentativa_em: number | null;
   ultimo_erro: string | null;
+  codigo_erro: string | null;
+  detalhe_erro: string | null;
   criado_em: number;
 }
+
+const paraJson = (valor: unknown) => (valor === undefined ? null : JSON.stringify(valor));
+const deJson = (texto: string | null) => (texto === null ? undefined : JSON.parse(texto));
 
 const paraItem = (l: Linha): ItemOutbox => ({
   id: l.id,
@@ -55,19 +62,25 @@ const paraItem = (l: Linha): ItemOutbox => ({
   operacao: l.operacao,
   metodo: l.metodo,
   caminho: l.caminho,
-  corpo: l.payload === null ? undefined : JSON.parse(l.payload),
+  corpo: deJson(l.payload),
   status: l.status,
   tentativas: l.tentativas,
   proximaTentativaEm: l.proxima_tentativa_em,
   ultimoErro: l.ultimo_erro,
+  codigoErro: l.codigo_erro,
+  detalheErro: deJson(l.detalhe_erro) ?? null,
   criadoEm: l.criado_em,
 });
 
-const COLUNAS: Record<keyof MudancasItem, string> = {
-  status: 'status',
-  tentativas: 'tentativas',
-  proximaTentativaEm: 'proxima_tentativa_em',
-  ultimoErro: 'ultimo_erro',
+/** Coluna de cada campo e como gravar o valor (JSON para o que não é texto nem número). */
+const COLUNAS: Record<keyof MudancasItem, [string, (valor: unknown) => unknown]> = {
+  status: ['status', (v) => v],
+  tentativas: ['tentativas', (v) => v],
+  proximaTentativaEm: ['proxima_tentativa_em', (v) => v ?? null],
+  ultimoErro: ['ultimo_erro', (v) => v ?? null],
+  codigoErro: ['codigo_erro', (v) => v ?? null],
+  detalheErro: ['detalhe_erro', (v) => (v === null ? null : paraJson(v))],
+  corpo: ['payload', paraJson],
 };
 
 /** Outbox no SQLite do aparelho: sobrevive a fechar o app e a reiniciar o celular. */
@@ -93,7 +106,7 @@ export function criarArmazemSqlite(nomeArquivo = 'outbox.db'): ArmazemOutbox {
         item.operacao,
         item.metodo,
         item.caminho,
-        item.corpo === undefined ? null : JSON.stringify(item.corpo),
+        paraJson(item.corpo),
         item.status,
         item.tentativas,
         item.proximaTentativaEm,
@@ -117,8 +130,8 @@ export function criarArmazemSqlite(nomeArquivo = 'outbox.db'): ArmazemOutbox {
       if (campos.length === 0) return;
       const db = await banco();
       await db.runAsync(
-        `UPDATE outbox SET ${campos.map((c) => `${COLUNAS[c]} = ?`).join(', ')} WHERE id = ?`,
-        ...campos.map((c) => mudancas[c] ?? null),
+        `UPDATE outbox SET ${campos.map((c) => `${COLUNAS[c][0]} = ?`).join(', ')} WHERE id = ?`,
+        ...campos.map((c) => COLUNAS[c][1](mudancas[c]) as string | number | null),
         id,
       );
     },
@@ -140,6 +153,11 @@ export function criarArmazemSqlite(nomeArquivo = 'outbox.db'): ArmazemOutbox {
     async recuperarInterrompidos() {
       const db = await banco();
       await db.runAsync(`UPDATE outbox SET status = 'pendente' WHERE status = 'enviando'`);
+    },
+
+    async removerDoUsuario(usuarioId) {
+      const db = await banco();
+      await db.runAsync('DELETE FROM outbox WHERE usuario_id = ?', usuarioId);
     },
 
     async liberarEspera(usuarioId) {

@@ -5,11 +5,11 @@ import type { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 
-import { distanciaM, type Ponto } from '../src/comum/geo.js';
-import { diaAtual } from '../src/comum/tempo.js';
+import { distanciaM, type Ponto } from '../src/shared/domain/geo.js';
+import { diaAtual } from '../src/shared/domain/tempo.js';
 import type { NivelAcesso, PrismaClient } from '../src/generated/prisma/client.js';
-import { LIMITE_EXATAS_POR_DIA } from '../src/modulos/localizacao/acesso-exata.js';
-import { gerarLocalizacaoPublica } from '../src/modulos/localizacao/localizacao-publica.js';
+import { LIMITE_EXATAS_POR_DIA } from '../src/modulos/localizacao/domain/acesso-exata.js';
+import { gerarLocalizacaoPublica } from '../src/modulos/localizacao/domain/localizacao-publica.js';
 import { criarAppDeTeste } from './app.js';
 import { criarPrismaDeTeste, limparBanco } from './banco.js';
 import { criarCasinha, criarUsuario } from './fabricas.js';

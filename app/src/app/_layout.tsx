@@ -42,10 +42,17 @@ function Navegacao() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="casinha/[id]" options={{ headerShown: true, title: '' }} />
         <Stack.Screen
+          name="casinha/nova"
+          options={{ headerShown: true, title: textos.novaCasinha.titulo }}
+        />
+        <Stack.Screen
           name="reportar/[casinhaId]"
           options={{ headerShown: true, presentation: 'modal' }}
         />
         <Stack.Screen name="contestar/[necessidadeId]" options={{ headerShown: true }} />
+        <Stack.Screen name="denunciar/[casinhaId]" options={{ headerShown: true }} />
+        <Stack.Screen name="desativacao/[casinhaId]" options={{ headerShown: true }} />
+        <Stack.Screen name="excluir-conta" options={{ headerShown: true }} />
         <Stack.Screen
           name="pendencias"
           options={{ headerShown: true, title: textos.pendencias.titulo }}

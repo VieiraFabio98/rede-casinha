@@ -2,7 +2,7 @@ import type { CameraRef } from '@maplibre/maplibre-react-native';
 import { useRouter } from 'expo-router';
 import { SymbolView } from 'expo-symbols';
 import { useMemo, useRef, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useCasinhasNaArea } from '@/api/casinhas';
@@ -129,7 +129,7 @@ export default function MapaScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t.novaCasinha}
-          onPress={() => Alert.alert(t.novaCasinha, t.novaCasinhaEmBreve)}
+          onPress={() => router.push('/casinha/nova')}
           style={({ pressed }) => [
             styles.botaoNova,
             { backgroundColor: cores.primary, opacity: pressed ? 0.8 : 1 },

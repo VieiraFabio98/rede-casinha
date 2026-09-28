@@ -1,0 +1,24 @@
+meta {
+  name: Ativar / manter casinha
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/admin/casinhas/{{casinhaId}}/ativar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "motivo": ""
+  }
+}
+docs {
+  Aprova casinha em revisão, reativa uma desativada, ou mantém depois de um pedido de desativação (o pedido sai da fila).
+}

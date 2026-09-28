@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 
 import { api } from './cliente';
-import type { Area, CasinhaDetalhe, CasinhasNaArea, MinhaCasinha } from './tipos';
+import type { Area, CasinhaDetalhe, CasinhasNaArea, Contagens, MinhaCasinha } from './tipos';
 
 export const chavesCasinhas = {
   todas: ['casinhas'] as const,
@@ -31,6 +31,14 @@ export function useCasinha(id: string) {
   return useQuery({
     queryKey: chavesCasinhas.detalhe(id),
     queryFn: () => api<CasinhaDetalhe>(`/casinhas/${encodeURIComponent(id)}`),
+  });
+}
+
+/** Contagens da tela de perfil (não guardadas offline: só fazem sentido atualizadas). */
+export function useContagens() {
+  return useQuery({
+    queryKey: ['me', 'contagens'],
+    queryFn: () => api<Contagens>('/me/contagens'),
   });
 }
 

@@ -7,7 +7,7 @@ Arquitetura **app + API própria + Postgres**. O app Expo nunca fala com o banco
 - **Leituras** sensíveis (mapa, detalhe) passam por endpoints que decidem, por usuário, se devolvem a localização exata ou a pública.
 - **Toda escrita** passa por endpoints que validam o DTO, a permissão, os limites diários e as regras de negócio numa **transação** do Prisma. Escritas vindas do celular são **idempotentes** pelo UUID gerado no aparelho.
 - **Tarefas por tempo** (expiração, status "sem notícias", limpeza de fotos) rodam no processo da API com `@nestjs/schedule`.
-- **Fotos** ficam no disco do servidor, atrás de uma interface de armazenamento, e só são servidas por URL assinada.
+- **Fotos** ficam atrás de uma interface de armazenamento (disco do servidor ou bucket S3 privado, por `ARMAZENAMENTO_DRIVER`) e só são servidas pela API, por URL assinada.
 - **Integrações** externas: Google (validação do ID token), Resend (e-mail), Expo Push (F2).
 
 ```mermaid
@@ -91,10 +91,15 @@ rede-casinha/
 │   │   ├── configurar-app.ts     # Prefixo /v1, ValidationPipe, shutdown hooks (também usado nos e2e)
 │   │   ├── config/ambiente.ts    # Variáveis de ambiente validadas com Zod
 │   │   ├── app.module.ts
-│   │   ├── comum/                # Guards, decorators (@Publico, @Nivel, @UsuarioAtual), filtros, geo.ts
-│   │   ├── infra/                # prisma/, armazenamento/, email/
+│   │   ├── shared/               # O que todos os módulos usam:
+│   │   │   ├── domain/           #   Transacao, RELOGIO, UsuarioLogado, geo, tempo, texto (puro)
+│   │   │   ├── errors/           #   NotFoundError, ConflictError… (viram HTTP no filtro)
+│   │   │   ├── helpers/          #   ok(), created(), noContent()…
+│   │   │   ├── filters/ interceptors/
+│   │   │   └── infra/            #   prisma/, auth/ (guard, @Publico, @Nivel), email/, relogio
 │   │   └── modulos/              # auth, me, casinhas, localizacao, necessidades, adocoes,
-│   │                             # fotos, denuncias, admin, status, limites, saude
+│   │                             # denuncias, moderacao, status, limites, saude
+│   │                             # (cada um com domain/ application/ infra/, ver abaixo)
 │   ├── prisma7.config.ts         # Config do CLI do Prisma
 │   ├── test/                     # e2e (Vitest + supertest) contra rede_casinha_test
 │   ├── bruno/                    # Coleção de requisições (inclui rotas /admin)
@@ -104,6 +109,35 @@ rede-casinha/
 ├── site/                         # GitHub Pages: privacidade, termos, excluir conta
 └── docs/
 ```
+
+## Camadas de um módulo
+
+Decisão D02 ([01-visao-geral.md](01-visao-geral.md#d02--camadas-dentro-de-cada-módulo-da-api-2026-09-28)). Todos os módulos seguem este formato; exemplo: `modulos/necessidades/`.
+
+```
+modulos/necessidades/
+├── domain/                  só TypeScript: sem Nest, sem Prisma
+│   ├── entities/            interfaces das entidades (Necessidade, Atividade…)
+│   ├── repositories/        interfaces + token de injeção (NECESSIDADES_REPOSITORY)
+│   ├── providers/           portas para o que vem de fora (proximidade, status, limites, acesso à casinha)
+│   └── regras.ts            regras puras (prazos, pode contestar?), com teste unitário
+├── application/
+│   ├── dto/                 entrada e saída (class-validator; viram o OpenAPI → tipos do app)
+│   └── use-cases/           um por ação; recebem as portas por @Inject(TOKEN)
+├── infra/
+│   ├── controllers/         HTTP: rota, guard, DTO → use-case → ok(...)
+│   ├── repositories/        Prisma; convertem a linha do banco na entidade
+│   └── providers/           adaptadores das portas para os outros módulos
+└── necessidades.module.ts   liga cada token à implementação da infra
+```
+
+- **Transação:** use-cases chamam `transacao.executar(...)` (porta `Transacao` em `shared/domain`). A implementação (`infra/prisma/prisma-transacional.ts`) guarda a transação num `AsyncLocalStorage`, e todo repositório usa `db.cliente()`: entra sozinho na transação em curso, sem receber `tx`.
+- **Relógio e usuário:** `RELOGIO` (porta) e `UsuarioLogado` (`{ id, nivel }`) em `shared/domain`, para os use-cases não dependerem do `Perfil` do Prisma.
+- **Erros:** use-cases lançam os erros de `shared/errors` (`NotFoundError`, `ConflictError(mensagem, codigo)`…); o `AppErrorFilter` responde `{ name, message, codigo? }`. O `codigo` é o que o app usa para decidir (ex.: `limite_diario` não é repetido pela fila).
+- **Respostas:** controllers devolvem `ok(...)` / `noContent()` de `shared/helpers`; o `HttpResponseInterceptor` aplica o status. O tipo da resposta vai no `@ApiOkResponse({ type })`, senão o OpenAPI perde o tipo.
+- **Entre módulos:** um módulo nunca usa o repositório de outro. Ele declara a porta de que precisa no próprio `domain/providers` e um adaptador na `infra/providers` chama o use-case que o outro módulo exporta (ex.: `necessidades` → `TravarCasinhaParaAcaoUseCase` de `casinhas`, `ConsumirLimiteUseCase` de `limites`, `RecalcularStatusUseCase` de `status`). Tipos puros do `domain` de outro módulo (`StatusCasinha`, `TipoNecessidade`, `Alvo`) podem ser importados direto.
+- **Enums:** DTOs validam com `@IsIn(LISTA)` usando as listas `as const` do `domain` (ex.: `TIPOS_NECESSIDADE`), não os enums do Prisma.
+- **Testes:** regras puras e use-cases com dublês em memória (sem banco) em `*.spec.ts`; os e2e continuam cobrindo o que só o Postgres garante. `src/arquitetura.spec.ts` barra imports proibidos entre as camadas e arquivos soltos fora de `domain/`, `application/` e `infra/`. Nos e2e, dublês entram por token (`overrideProvider(VERIFICADOR_GOOGLE)`) ou pela classe `Relogio`.
 
 ## Módulos da API (NestJS)
 
@@ -122,7 +156,7 @@ rede-casinha/
 | `limites` | `consumirLimite` (RN06) |
 | `saude` | `GET /saude` |
 | `infra/prisma` | `PrismaService` global |
-| `infra/armazenamento` | Interface `Armazenamento` com drivers `disco` (MVP) e `s3` (R2, futuro) |
+| `infra/armazenamento` | Interface `Armazenamento` com drivers `disco`, `s3` (AWS S3 ou R2) e `memoria` (testes); `AssinaturaDeUrls` (HMAC das URLs de fotos) |
 | `infra/email` | Envio via Resend, templates em pt-BR |
 
 **Peças transversais:**
@@ -418,7 +452,7 @@ erDiagram
   }
 ```
 
-## Geo sem PostGIS (`api/src/comum/geo.ts`)
+## Geo sem PostGIS (`api/src/shared/domain/geo.ts`)
 
 Funções puras, com testes unitários:
 
@@ -468,9 +502,10 @@ Todos sob `https://<dominio>/v1`, exceto `GET /saude` (na raiz, para o monitoram
 |---|---|---|---|
 | `GET /casinhas?minLat&minLng&maxLat&maxLng` | logado | `{ casinhas: [{ id, nome, status, animais, lat, lng, exata, necessidadesAbertas[] }], truncado }` | Filtra pela coordenada **pública**. Máx. 1.000 itens (`truncado = true` se havia mais). Exata para criador, adotante e moderador; o verificado vê na lista **só** as que já abriu hoje no detalhe (a lista não gasta cota). Não traz inativas nem ocultadas. Coordenadas com 6 casas. ~200 bytes por casinha sem compressão. |
 | `GET /casinhas/:id` | logado | casinha + necessidades abertas + adotantes (apelidos) + 30 últimas atividades (`apelido: null` = usuário removido) + `minhasPermissoes`. Fotos entram na T1.5. | Para o verificado, devolver a exata gasta 1 das 50 casinhas distintas do dia e registra em `acessos_localizacao`. Ocultada: só moderador, criador e adotantes; inativa: só moderador; senão 404. |
-| `GET /me` | logado | perfil + contagens | |
+| `GET /me` | logado | conta + perfil (`null` com cadastro pendente) | |
+| `GET /me/contagens` | logado | `{ contribuicoes, atendimentos, casinhasAdotadas }` | Para a tela de perfil. |
 | `GET /me/casinhas` | logado | casinhas que criei ou adotei: mesmos campos do mapa + `souCriador`, `souAdotante` | Sempre com a exata. Inclui as ocultadas por denúncia; não inclui as inativas. |
-| `GET /fotos/:id?v=miniatura&exp&assinatura` | URL assinada | arquivo JPEG | Assinatura HMAC com validade de 1 h; `Cache-Control: private`. |
+| `GET /fotos/:id?exp&assinatura` e `GET /fotos/:id/miniatura?exp&assinatura` | URL assinada | arquivo JPEG | HMAC de `id:variante:exp`; vale de 1 h a 1 h 30 (blocos de 30 min, para o cache do app). `Cache-Control: private, immutable`. Foto oculta pela moderação: 404. |
 | `GET /saude` | público | `{ ok, banco }` | Fora do prefixo `/v1`. 503 se o banco estiver fora. |
 
 ### Escrita (exigem login, perfil não bloqueado e os limites da RN06)
@@ -479,49 +514,53 @@ Reportar, reconfirmar, atender, contestar e check-in (módulo `necessidades`) re
 | Método e rota | Corpo | Efeito |
 |---|---|---|
 | `POST /me/cadastro` | `{ apelido, maiorDeIdade, termosVersao }` | Cria o `perfis`. |
-| `DELETE /me` | — | RN07: anonimiza contribuições, apaga fotos, perfil, sessões, dispositivos e o usuário. |
-| `POST /casinhas` | `{ id, nome, descricao, animais, lat, lng, precisaoM, forcar, criadaNoCelularEm }` | Recusa se `precisaoM > 30` sem ajuste manual. Procura duplicatas a até 30 m: se houver e `forcar = false`, devolve `{ resultado: 'possivel_duplicata', candidatos: [{ id, nome, miniatura }] }` sem coordenadas. Se não, cria `casinhas` + `casinhas_localizacao` + atividade `cadastro` + adoção do criador. |
+| `DELETE /me` | — | RN07, numa transação: apaga fotos, códigos de login e o usuário (em cascata: perfil, sessões, adoções, acessos, limites); o histórico fica sem autor ("Usuário removido"). Depois da transação, apaga os arquivos das fotos. 204. Vale com cadastro pendente e conta bloqueada. |
+| `POST /casinhas` | `{ id, nome, descricao?, animais, lat, lng, precisaoM, ajusteManual?, forcar?, criadaNoCelularEm? }` | Recusa com 422 `precisao_insuficiente` se `precisaoM > 30` sem `ajusteManual`. Procura casinhas visíveis e não inativas a até 30 m: se houver e `forcar` não vier, devolve `{ resultado: 'possivel_duplicata', candidatas: [{ id, nome, miniatura }] }` sem coordenadas e sem criar (conta no limite de 10/dia). Senão cria `casinhas` (status `ok`; `em_revisao` se havia vizinha e veio `forcar`) + `casinhas_localizacao` + atividade `cadastro` + adoção do criador, e responde `{ resultado: 'ok', id, emRevisao }`. 5 cadastros/dia (20 do verificado). Reenviar o mesmo id devolve `ok` sem repetir. |
 | `PATCH /casinhas/:id` | `{ nome?, descricao?, animais?, lat?, lng? }` | Só criador, adotante ou moderador. Mudança de localização limitada a 30 m (exceto moderador). |
 | `POST /casinhas/:id/check-in` | `{ atividadeId, lat?, lng?, criadaNoCelularEm? }` | Atualiza `ultima_atividade_em` e recalcula o status. |
-| `POST /casinhas/:id/desativacao` | `{ atividadeId, motivo }` | Atividade + entrada na fila de moderação. |
-| `POST /casinhas/:id/adocao` | `{ lat, lng }` | Permitido ao criador, ou a quem está ≤ 100 m da exata. Resposta só `ok` ou `nao_permitido`, **sem distância**. Máx. 3 adotantes. |
+| `POST /casinhas/:id/desativacao` | `{ atividadeId, motivo }` | Atividade `desativacao_pedida` + entrada na fila de moderação. Idempotente pelo `atividadeId`; conta no limite de denúncias (20/dia). |
+| `POST /casinhas/:id/adocao` | `{ lat, lng }` | Permitido ao criador, ou a quem está ≤ 100 m da exata. Resposta só `ok` ou `nao_permitido`, **sem distância nem motivo**. Máx. 3 adotantes. 3 tentativas por dia, contando as recusadas (403 `limite_diario` na 4ª). Quem já adota recebe `ok` sem gastar tentativa. |
 | `DELETE /casinhas/:id/adocao` | — | Encerra a adoção. |
 | `POST /necessidades` | `{ id, casinhaId, tipo, urgencia, observacao?, lat?, lng?, criadaNoCelularEm }` | Se já existe aberta do mesmo tipo: reconfirma (e sobe a urgência se for o caso). Calcula `validado_local` (≤ 100 m) e descarta as coordenadas do usuário. Recalcula o status. |
 | `POST /necessidades/:id/reconfirmar` | `{ atividadeId, lat?, lng? }` | Renova `expira_em`. 1 vez a cada 12 h por usuário (antes disso devolve `ja_reconfirmada`, sem erro). Necessidade fechada: 409. |
 | `POST /necessidades/:id/atender` | `{ atividadeId, observacao?, lat?, lng? }` | `status = atendida`. Se já estava atendida, só registra a atividade e devolve `{ resultado: 'ja_atendida' }`. |
 | `POST /necessidades/:id/contestar` | `{ atividadeId, observacao }` | Só até 24 h depois do atendimento (senão 409 `fora_do_prazo`). Reabre a necessidade, a menos que já exista outra aberta do mesmo tipo. |
-| `PUT /fotos/:id` | multipart: `arquivo`, `miniatura`, `casinhaId`, `atividadeId?` | Idempotente pelo `id`. Máx. 1 MB, só `image/jpeg`, limite por casinha. Grava pela interface de armazenamento e registra em `fotos`. |
-| `POST /denuncias` | `{ alvoTipo, alvoId, motivo, descricao? }` | Com 3 denúncias distintas de contas com ≥ 7 dias: `moderacao = oculto_auto`. |
+| `PUT /fotos/:id` | multipart: `foto`, `miniatura`, `casinhaId`, `atividadeId?` | Idempotente pelo `id`. Foto até 1 MB, miniatura até 200 KB, só JPEG (confere os bytes e tira EXIF/XMP de novo). Sem `atividadeId`: foto de perfil, só criador, adotante ou moderador, até 5 por casinha. Com `atividadeId`: só atividade do próprio usuário, uma foto, expira em 90 dias. 20 fotos/dia. Responde `{ id, url, urlMiniatura }`. |
+| `POST /denuncias` | `{ alvoTipo, alvoId, motivo, descricao? }` | Uma por pessoa e alvo; 20/dia. Com 3 denúncias abertas de contas com ≥ 7 dias: casinha e foto → `oculto_auto`; necessidade → cancelada; perfil só vai para a fila. Resposta sempre `{ resultado: 'ok' }`. |
 
-### Moderação (`@Nivel('moderador')`; usadas pelo Bruno no MVP)
+### Moderação (`@Nivel('moderador')`; usadas pelo Bruno no MVP, ver [moderacao.md](moderacao.md))
+Todas exigem `motivo` no corpo.
+
 | Método e rota | Efeito |
 |---|---|
-| `GET /admin/fila` | Denúncias abertas + casinhas `em_revisao` + pedidos de desativação + pares de casinhas a menos de 30 m |
-| `POST /admin/ocultar` · `POST /admin/restaurar` | `{ alvoTipo, alvoId, motivo }` |
+| `GET /admin/fila` | Denúncias abertas agrupadas por alvo (prioritárias primeiro) + casinhas `em_revisao` + pedidos de desativação ainda não decididos + pares de casinhas a menos de 30 m |
+| `POST /admin/ocultar` · `POST /admin/restaurar` | `{ alvoTipo, alvoId, motivo }`. Necessidade: cancela / reabre. As denúncias abertas do alvo viram procedentes / improcedentes. |
 | `POST /admin/casinhas/:id/desativar` | Desativa |
-| `POST /admin/casinhas/:id/mesclar` | `{ destinoId }`: move atividades, fotos e adotantes; desativa a origem |
-| `POST /admin/usuarios/:id/nivel` | `{ nivel }` (promover a verificado exige moderador; a moderador, admin) |
-| `POST /admin/usuarios/:id/bloqueio` | `{ ate, motivo }` |
+| `POST /admin/casinhas/:id/ativar` | Aprova casinha em revisão, reativa, ou mantém depois de um pedido de desativação (o pedido sai da fila) |
+| `POST /admin/casinhas/:id/mesclar` | `{ destinoId }`: move atividades, fotos, necessidades e adotantes (respeitando uma aberta por tipo e até 3 adotantes); desativa a origem |
+| `POST /admin/usuarios/:id/nivel` | `{ nivel }` (promover a verificado exige moderador; criar ou mexer em moderador e admin, só admin; nunca a própria conta) |
+| `POST /admin/usuarios/:id/bloqueio` | `{ ate, motivo }` (`ate: null` desbloqueia) |
 | `POST /admin/denuncias/:id/resolver` | `{ procedente }` |
 
-Toda ação grava em `acoes_moderacao`.
+Toda ação grava em `acoes_moderacao` (a ocultação automática também, com `moderador_id = null`).
 
 ## Fotos (armazenamento)
 
-- **Interface** `Armazenamento`: `salvar(chave, buffer)`, `ler(chave)`, `apagar(chave)`, `existe(chave)`.
-- **Driver `disco` (MVP):** grava em `/dados/fotos` (volume Docker incluído no backup). A API entrega o arquivo em `GET /fotos/:id` só com URL assinada (HMAC-SHA256 de `id + variante + exp` com um segredo do `.env`).
-- **Driver `s3` (futuro, R2):** mesma interface; a URL assinada passa a ser a pré-assinada do R2 (T2.14).
-- O upload valida tamanho, MIME e os *magic bytes* do JPEG antes de gravar.
+- **Interface** `Armazenamento` (`shared/infra/armazenamento`): `gravar(chave, dados, tipo)`, `ler(chave)` (stream ou `null`), `apagar(chaves)`. Driver por `ARMAZENAMENTO_DRIVER`.
+- **Driver `disco`:** grava em `ARMAZENAMENTO_PASTA` (em produção, um volume Docker incluído no backup).
+- **Driver `s3`:** AWS S3 (bucket privado `rede-casinha-bucket`, `sa-east-1`) ou compatível (R2, via `S3_ENDPOINT`). Sem CORS e sem acesso público: só a API lê e grava.
+- Nos dois drivers, a API entrega o arquivo em `GET /fotos/:id` só com URL assinada (HMAC-SHA256 de `id:variante:exp`, `AssinaturaDeUrls`). O detalhe da casinha já devolve as URLs.
+- O upload valida tamanho, MIME e os *magic bytes* do JPEG e remove de novo os metadados (EXIF, XMP, comentários) antes de gravar.
 
 ## Jobs (`@nestjs/schedule`)
 
-Todos idempotentes: rodar duas vezes não causa efeito extra.
+Todos idempotentes: rodar duas vezes não causa efeito extra. Ficam em `modulos/status/infra/jobs/tarefas-status.job.ts` (os dois primeiros, que chamam os use-cases `ExpirarNecessidades` e `RecalcularStatusDeTodas`); cada casinha é travada (`FOR UPDATE`) e relida antes de gravar, como nas escritas do app. Pressupõem **uma instância** da API: com mais de uma, trocar por um advisory lock no Postgres.
 
 | Job | Frequência | Faz |
 |---|---|---|
 | `expirar-necessidades` | a cada 15 min | `aberta` com `expira_em < agora` → `expirada` + atividade `expiracao` + recálculo do status. |
-| `recalcular-status` | a cada hora | Recalcula o status das casinhas afetadas por tempo (48 h de água/ração, 7 dias sem notícias). |
-| `limpar-fotos-expiradas` | diário, 3h | Apaga do armazenamento e do banco as fotos com `expira_em` vencido. |
+| `recalcular-status` | a cada hora (no minuto 5) | Recalcula o status das casinhas afetadas por tempo (48 h de água/ração, 7 dias sem notícias). Grava só o que mudou. |
+| `limpar-fotos` | diário, 4h30 (Brasília) | Apaga do armazenamento e do banco as fotos com `expira_em` vencido (`modulos/fotos/infra/jobs`). |
 | `limpar-auditoria` | semanal | Apaga `acessos_localizacao` com mais de 180 dias, `limites_uso` com mais de 7 dias, `codigos_email` usados ou vencidos e sessões expiradas. |
 
 Na Fase 2 entra o **pg-boss** para trabalhos com retentativa (push). O relógio é injetável (`Relogio.agora()`) para testar as transições por tempo.
@@ -542,6 +581,8 @@ create table outbox (
   tentativas integer default 0,
   proxima_tentativa_em integer, -- epoch ms (backoff exponencial, máx. 30 min)
   ultimo_erro text,
+  codigo_erro text,             -- codigo do erro da API (ex.: 'possivel_duplicata')
+  detalhe_erro text,            -- JSON com os dados do erro (ex.: as candidatas)
   criado_em integer not null
 );
 ```

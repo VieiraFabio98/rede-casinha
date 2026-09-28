@@ -5,3 +5,9 @@ export const VERSAO_TERMOS = '2026-10-01';
 const SITE_URL = process.env.EXPO_PUBLIC_SITE_URL;
 export const URL_TERMOS = SITE_URL ? `${SITE_URL}/termos` : null;
 export const URL_PRIVACIDADE = SITE_URL ? `${SITE_URL}/privacidade` : null;
+
+/**
+ * E-mail do projeto (público, na loja e na política): pedidos de dados (LGPD) e contato.
+ * Criado na T0.1. Enquanto não estiver no `.env`, o botão "Pedir meus dados" não aparece.
+ */
+export const EMAIL_CONTATO = process.env.EXPO_PUBLIC_EMAIL_CONTATO || null;

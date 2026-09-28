@@ -9,7 +9,7 @@ import 'dotenv/config';
 import { hash } from '@node-rs/argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 
-import { normalizarApelido } from '../src/comum/texto.js';
+import { normalizarApelido } from '../src/shared/domain/texto.js';
 import { VERSAO_TERMOS } from '../src/config/termos.js';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 

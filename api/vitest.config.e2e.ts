@@ -12,6 +12,8 @@ process.env.DATABASE_URL = process.env.TEST_DATABASE_URL;
 process.env.NODE_ENV = 'test';
 // E-mails ficam em memória para os testes lerem o código de login.
 process.env.EMAIL_DRIVER = 'memoria';
+// Arquivos das fotos também (o teste confere o que foi gravado).
+process.env.ARMAZENAMENTO_DRIVER = 'memoria';
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },

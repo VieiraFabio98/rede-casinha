@@ -1,0 +1,25 @@
+meta {
+  name: Resolver denúncia avulsa
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/admin/denuncias/{{denunciaId}}/resolver
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "procedente": false,
+    "motivo": ""
+  }
+}
+docs {
+  Para fechar uma denúncia sem ocultar nem restaurar o alvo.
+}

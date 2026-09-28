@@ -1,12 +1,14 @@
 import { Image } from 'expo-image';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Alert, Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { atender, checkIn, reconfirmar } from '@/api/acoes';
+import { adotar, deixarDeAdotar } from '@/api/adocao';
 import { useCasinha } from '@/api/casinhas';
 import { ErroApi } from '@/api/cliente';
-import type { CasinhaDetalhe } from '@/api/tipos';
+import type { CasinhaDetalhe, FotoUrls } from '@/api/tipos';
 import { useSessao } from '@/auth/sessao';
 import { Botao } from '@/components/botao';
 import { ThemedText } from '@/components/themed-text';
@@ -14,6 +16,11 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { tempoRelativo, textoAtividade } from '@/domain/historico';
 import { COR_STATUS, PINO_STATUS, SELO_STATUS } from '@/domain/status';
+import { MAXIMO_FOTOS_DA_CASINHA } from '@/fotos/dimensoes';
+import { enviarFoto } from '@/fotos/enviar';
+import { escolherFoto } from '@/fotos/escolher';
+import { FotoAmpliada, Galeria, Miniatura } from '@/fotos/galeria';
+import { prepararFoto } from '@/fotos/pendentes';
 import { textos } from '@/i18n/pt-BR';
 import { AvisoMapa } from '@/map/aviso-mapa';
 import { useFila } from '@/offline/outbox/use-fila';
@@ -21,8 +28,117 @@ import { useFila } from '@/offline/outbox/use-fila';
 const t = textos.casinha;
 const tm = textos.mapa;
 
-/** Ações que ainda não existem na API: cada uma chega na sua task (T1.9, T1.10…). */
+const ta = textos.adocao;
+const tf = textos.fotos;
+
+/** Ações que ainda não existem na API (editar: com o cadastro, T1.6). */
 const emBreve = (acao: string) => Alert.alert(acao, t.emBreve);
+
+const mensagemDeErro = (erro: unknown, semConexao: string, generica: string) =>
+  erro instanceof ErroApi ? (erro.semConexao ? semConexao : erro.message) : generica;
+
+/**
+ * Adotar (com o compromisso explicado antes) e deixar de adotar. Online, com resposta na hora:
+ * quem adota precisa estar perto da casinha agora (RF04.1).
+ */
+function Adocao({ casinha }: { casinha: CasinhaDetalhe }) {
+  const [ocupado, setOcupado] = useState(false);
+  const p = casinha.minhasPermissoes;
+
+  async function executar(acao: () => Promise<string>) {
+    setOcupado(true);
+    try {
+      Alert.alert(await acao());
+    } catch (erro) {
+      Alert.alert(mensagemDeErro(erro, ta.semConexao, ta.erro));
+    } finally {
+      setOcupado(false);
+    }
+  }
+
+  const pedirAdocao = () =>
+    Alert.alert(ta.confirmarTitulo, ta.compromisso, [
+      { text: ta.cancelar, style: 'cancel' },
+      {
+        text: ta.confirmar,
+        onPress: () =>
+          void executar(async () => {
+            const resultado = await adotar(casinha.id);
+            if (resultado === 'ok') return ta.adotou;
+            return resultado === 'sem_posicao' ? ta.semPosicao : ta.naoPermitido;
+          }),
+      },
+    ]);
+
+  const pedirSaida = () =>
+    Alert.alert(ta.deixarTitulo, ta.deixarMensagem, [
+      { text: ta.cancelar, style: 'cancel' },
+      {
+        text: ta.deixar,
+        style: 'destructive',
+        onPress: () =>
+          void executar(async () => {
+            await deixarDeAdotar(casinha.id);
+            return ta.deixou;
+          }),
+      },
+    ]);
+
+  return (
+    <>
+      {p.adotar && (
+        <>
+          <Botao
+            titulo={t.adotar}
+            variante="secundario"
+            carregando={ocupado}
+            onPress={pedirAdocao}
+          />
+          <ThemedText type="small" themeColor="textSecondary">
+            {ta.compromisso}
+          </ThemedText>
+        </>
+      )}
+      {p.deixarDeAdotar && (
+        <Botao
+          titulo={t.deixarDeAdotar}
+          variante="texto"
+          carregando={ocupado}
+          onPress={pedirSaida}
+        />
+      )}
+    </>
+  );
+}
+
+/** Fotos de perfil. Quem cuida da casinha adiciona (vai pela fila: funciona offline). */
+function Fotos({ casinha }: { casinha: CasinhaDetalhe }) {
+  const [preparando, setPreparando] = useState(false);
+
+  async function adicionar() {
+    const original = await escolherFoto();
+    if (!original) return;
+    setPreparando(true);
+    try {
+      await enviarFoto(casinha.id, await prepararFoto(original));
+    } catch {
+      Alert.alert(tf.erroPreparar);
+    } finally {
+      setPreparando(false);
+    }
+  }
+
+  return (
+    <Galeria
+      fotos={casinha.fotos}
+      podeAdicionar={
+        casinha.minhasPermissoes.editar && casinha.fotos.length < MAXIMO_FOTOS_DA_CASINHA
+      }
+      preparando={preparando}
+      aoAdicionar={() => void adicionar()}
+    />
+  );
+}
 
 function horaDosDados(instante: number) {
   return new Date(instante).toLocaleString('pt-BR', {
@@ -132,6 +248,7 @@ export default function CasinhaScreen() {
   const casinha = consulta.data;
   const apelido = useSessao().me?.perfil?.apelido ?? '';
   const pendentes = new Set(useFila().map((item) => item.id));
+  const [fotoAmpliada, setFotoAmpliada] = useState<FotoUrls | null>(null);
 
   const erro = consulta.error;
   const semConexao = erro instanceof ErroApi && erro.semConexao;
@@ -198,6 +315,12 @@ export default function CasinhaScreen() {
           {casinha.descricao && <ThemedText>{casinha.descricao}</ThemedText>}
         </View>
 
+        {(casinha.fotos.length > 0 || p.editar) && (
+          <Secao titulo={tf.titulo}>
+            <Fotos casinha={casinha} />
+          </Secao>
+        )}
+
         <Secao titulo={t.oQueFalta}>
           <Necessidades casinha={casinha} pendentes={pendentes} apelido={apelido} />
         </Secao>
@@ -231,16 +354,7 @@ export default function CasinhaScreen() {
           <ThemedText>
             {casinha.adotantes.length ? casinha.adotantes.join(', ') : t.ninguemAdotou}
           </ThemedText>
-          {p.adotar && (
-            <Botao titulo={t.adotar} variante="secundario" onPress={() => emBreve(t.adotar)} />
-          )}
-          {p.deixarDeAdotar && (
-            <Botao
-              titulo={t.deixarDeAdotar}
-              variante="texto"
-              onPress={() => emBreve(t.deixarDeAdotar)}
-            />
-          )}
+          <Adocao casinha={casinha} />
         </Secao>
 
         <Secao titulo={t.historico}>
@@ -255,6 +369,14 @@ export default function CasinhaScreen() {
                 {a.observacao ? ` · ${a.observacao}` : ''}
                 {pendentes.has(a.id) ? ` · ${t.aguardandoEnvio}` : ''}
               </ThemedText>
+              {a.foto && (
+                <Miniatura
+                  foto={a.foto}
+                  tamanho={64}
+                  rotulo={tf.fotoDaAtividade}
+                  aoTocar={() => setFotoAmpliada(a.foto)}
+                />
+              )}
             </View>
           ))}
         </Secao>
@@ -267,14 +389,29 @@ export default function CasinhaScreen() {
             <Botao
               titulo={t.pedirDesativacao}
               variante="texto"
-              onPress={() => emBreve(t.pedirDesativacao)}
+              onPress={() =>
+                router.push({
+                  pathname: '/desativacao/[casinhaId]',
+                  params: { casinhaId: casinha.id },
+                })
+              }
             />
           )}
           {p.denunciar && (
-            <Botao titulo={t.denunciar} variante="texto" onPress={() => emBreve(t.denunciar)} />
+            <Botao
+              titulo={t.denunciar}
+              variante="texto"
+              onPress={() =>
+                router.push({
+                  pathname: '/denunciar/[casinhaId]',
+                  params: { casinhaId: casinha.id },
+                })
+              }
+            />
           )}
         </View>
       </ScrollView>
+      <FotoAmpliada foto={fotoAmpliada} aoFechar={() => setFotoAmpliada(null)} />
 
       {/* Ação principal no rodapé, no alcance do polegar. */}
       <ThemedView style={[styles.rodape, { paddingBottom: insets.bottom + Spacing.two }]}>

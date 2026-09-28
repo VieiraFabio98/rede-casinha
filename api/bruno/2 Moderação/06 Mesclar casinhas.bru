@@ -1,0 +1,25 @@
+meta {
+  name: Mesclar duplicata
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/admin/casinhas/{{casinhaId}}/mesclar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "destinoId": "",
+    "motivo": ""
+  }
+}
+docs {
+  casinhaId = a duplicata (origem), que é desativada. destinoId = a que fica. Histórico, fotos, necessidades e adotantes vão para o destino.
+}

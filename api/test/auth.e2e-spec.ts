@@ -4,7 +4,7 @@ import request from 'supertest';
 
 import { VERSAO_TERMOS } from '../src/config/termos.js';
 import type { PrismaClient } from '../src/generated/prisma/client.js';
-import type { EmailMemoria } from '../src/infra/email/email.service.js';
+import type { EmailMemoria } from '../src/shared/infra/email/email.service.js';
 import { criarAppDeTeste, tokenGoogle } from './app.js';
 import { criarPrismaDeTeste, limparBanco } from './banco.js';
 

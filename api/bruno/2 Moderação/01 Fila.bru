@@ -1,0 +1,19 @@
+meta {
+  name: Fila de moderação
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/admin/fila
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+docs {
+  Denúncias abertas (prioritárias primeiro), casinhas em revisão, pedidos de desativação e possíveis duplicatas (a até 30 m). Copie os ids daqui para o ambiente.
+}

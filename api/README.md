@@ -47,8 +47,10 @@ src/
 ├── configurar-app.ts     # Prefixo /v1, ValidationPipe, shutdown hooks (compartilhado com os e2e)
 ├── app.module.ts
 ├── config/ambiente.ts    # Variáveis de ambiente validadas com Zod (a API não sobe se faltar algo)
-├── infra/prisma/         # PrismaModule global + PrismaService (adapter pg)
-├── modulos/<modulo>/     # *.module.ts, *.controller.ts, *.service.ts, DTOs, *.spec.ts
+├── shared/               # domain (Transacao, Relogio…), errors, helpers HTTP, infra (prisma, auth, email, armazenamento)
+├── modulos/<modulo>/     # domain/ (interfaces + regras), application/ (DTOs + use-cases),
+│                         # infra/ (controllers, repositórios Prisma, adaptadores), <modulo>.module.ts
+├── arquitetura.spec.ts   # Barra imports proibidos entre as camadas
 └── generated/prisma/     # Client gerado (não versionado)
 prisma/schema.prisma      # Fonte da verdade do banco (índices parciais via preview `partialIndexes`)
 prisma/migrations/        # SQL versionado (a inicial também tem CHECKs escritos à mão)
@@ -84,3 +86,10 @@ O container roda `prisma migrate deploy` antes de subir e tem healthcheck em `/s
 - **E-mail em desenvolvimento:** com `EMAIL_DRIVER=console`, o código aparece no log da API.
 - **Conta do revisor da Play:** `REVISOR_EMAIL=... REVISOR_SENHA=... npm run conta:revisor`.
 - **Proteger uma rota:** tudo já exige login. Use `@Publico()` para abrir e `@Nivel('verificado')` (ou outro nível) para exigir cadastro concluído, conta não bloqueada e nível mínimo. O usuário chega no controller com `@UsuarioAtual()`.
+
+## Fotos
+
+- **Envio:** `PUT /v1/fotos/:id` (multipart: `casinhaId`, `atividadeId` opcional, arquivos `foto` até 1 MB e `miniatura` até 200 KB, os dois `image/jpeg`). O id vem do celular: reenviar não duplica. O servidor tira EXIF, XMP e comentários de novo antes de gravar.
+- **Leitura:** o detalhe da casinha devolve `fotos[]` e `atividades[].foto` com `url` e `urlMiniatura` relativas à base da API (`/fotos/:id?exp=…&assinatura=…`). A URL é assinada com HMAC, vale de 1 h a 1 h 30 e não precisa de token.
+- **Onde ficam:** `ARMAZENAMENTO_DRIVER=disco` grava em `ARMAZENAMENTO_PASTA` (padrão `./armazenamento`, fora do git). Com `s3`, defina `S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID` e `AWS_SECRET_ACCESS_KEY`. O bucket fica **privado**: o app só vê as fotos pela API. A credencial precisa de `s3:PutObject`, `s3:GetObject` e `s3:DeleteObject` no bucket.
+- **Limpeza:** fotos de atividade são apagadas depois de 90 dias (job diário às 4h30 de Brasília). Excluir a conta apaga as fotos enviadas e os arquivos.

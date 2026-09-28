@@ -23,11 +23,24 @@ export interface ItemOutbox extends NovaOperacao {
   /** Epoch ms. `null` = pode tentar já. */
   proximaTentativaEm: number | null;
   ultimoErro: string | null;
+  /** `codigo` do último erro da API (ex.: `possivel_duplicata`), para a tela decidir o que oferecer. */
+  codigoErro: string | null;
+  /** `dados` do último erro (ex.: as candidatas da duplicata). */
+  detalheErro: unknown;
   criadoEm: number;
 }
 
 export type MudancasItem = Partial<
-  Pick<ItemOutbox, 'status' | 'tentativas' | 'proximaTentativaEm' | 'ultimoErro'>
+  Pick<
+    ItemOutbox,
+    | 'status'
+    | 'tentativas'
+    | 'proximaTentativaEm'
+    | 'ultimoErro'
+    | 'codigoErro'
+    | 'detalheErro'
+    | 'corpo'
+  >
 >;
 
 /** Onde a fila fica guardada (SQLite no app, memória nos testes). */
@@ -42,4 +55,6 @@ export interface ArmazemOutbox {
   recuperarInterrompidos(): Promise<void>;
   /** Tira a espera dos pendentes do usuário ("Tentar agora"). */
   liberarEspera(usuarioId: string): Promise<void>;
+  /** Apaga tudo do usuário (conta excluída: nada dele pode ser enviado depois). */
+  removerDoUsuario(usuarioId: string): Promise<void>;
 }

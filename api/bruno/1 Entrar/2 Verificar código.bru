@@ -1,0 +1,27 @@
+meta {
+  name: 2 Verificar código
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/codigo/verificar
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "{{email}}",
+    "codigo": "{{codigo}}"
+  }
+}
+
+script:post-response {
+  // Guarda o token de acesso (15 min) para as rotas de moderação.
+  if (res.status === 200) bru.setEnvVar("token", res.body.acesso);
+}
+
+docs {
+  Preencha `codigo` no ambiente. O token fica guardado e vale 15 minutos; depois, peça outro código.
+}

@@ -25,4 +25,47 @@ describe('regras de arquitetura', () => {
 
     expect(violacoes).toEqual([]);
   });
+
+  /** Imports de um arquivo (o que vem depois de `from '...'`). */
+  const importsDe = (arquivo: string) =>
+    [...readFileSync(join(RAIZ_SRC, arquivo), 'utf8').matchAll(/from\s+'([^']+)'/g)].map(
+      (m) => m[1],
+    );
+
+  /** Arquivos de uma camada (`domain`, `application`) nos módulos e em `shared`. */
+  const daCamada = (camada: string) =>
+    arquivosTs(RAIZ_SRC)
+      .map((arquivo) => relative(RAIZ_SRC, arquivo))
+      .filter((arquivo) => arquivo.split(/[\\/]/).includes(camada))
+      .filter((arquivo) => arquivo.startsWith('modulos') || arquivo.startsWith('shared'));
+
+  it('domain não depende de Nest, Prisma, application nem infra', () => {
+    const violacoes = daCamada('domain').flatMap((arquivo) =>
+      importsDe(arquivo)
+        .filter((i) => /^@nestjs\/|generated\/prisma|\/(application|infra)\//.test(i))
+        .map((i) => `${arquivo} → ${i}`),
+    );
+    expect(violacoes).toEqual([]);
+  });
+
+  it('application não depende de Prisma nem de infra', () => {
+    const violacoes = daCamada('application').flatMap((arquivo) =>
+      importsDe(arquivo)
+        .filter((i) => /generated\/prisma|\/infra\//.test(i))
+        .map((i) => `${arquivo} → ${i}`),
+    );
+    expect(violacoes).toEqual([]);
+  });
+
+  it('todo arquivo de módulo está em domain, application ou infra (fora o <modulo>.module.ts)', () => {
+    const violacoes = arquivosTs(join(RAIZ_SRC, 'modulos'))
+      .map((arquivo) => relative(join(RAIZ_SRC, 'modulos'), arquivo).split(/[\\/]/))
+      .filter(([modulo, ...resto]) =>
+        resto.length === 1
+          ? resto[0] !== `${modulo}.module.ts`
+          : !['domain', 'application', 'infra'].includes(resto[0]),
+      )
+      .map((partes) => partes.join('/'));
+    expect(violacoes).toEqual([]);
+  });
 });

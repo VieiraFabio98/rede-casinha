@@ -1,0 +1,26 @@
+meta {
+  name: Ocultar conteúdo
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/admin/ocultar
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "alvoTipo": "casinha",
+    "alvoId": "{{alvoId}}",
+    "motivo": ""
+  }
+}
+docs {
+  alvoTipo: casinha | foto | necessidade. Casinha e foto ficam ocultas; necessidade é cancelada. As denúncias abertas contra o alvo viram procedentes. Perfil não se oculta: use Bloquear.
+}

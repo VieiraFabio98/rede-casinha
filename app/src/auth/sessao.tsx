@@ -17,6 +17,7 @@ import {
 
 import { api, ErroApi, ligarSessao } from '@/api/cliente';
 import { apagarCache } from '@/api/consultas';
+import { apagarFilaDoUsuario } from '@/offline/outbox/fila';
 import type { Me, Tokens } from '@/api/tipos';
 import { VERSAO_TERMOS } from '@/domain/termos';
 import { textos } from '@/i18n/pt-BR';
@@ -36,6 +37,8 @@ interface ContextoSessao {
   entrarComSenha: (email: string, senha: string) => Promise<void>;
   concluirCadastro: (apelido: string) => Promise<void>;
   sair: () => Promise<void>;
+  /** Exclui a conta de vez (RN07) e limpa tudo do aparelho. Precisa de internet. */
+  excluirConta: () => Promise<void>;
 }
 
 const Contexto = createContext<ContextoSessao | null>(null);
@@ -172,6 +175,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             autenticado: false,
           }).catch(() => undefined);
         }
+        GoogleSignin.signOut().catch(() => undefined);
+      },
+      excluirConta: async () => {
+        await api('/me', { metodo: 'DELETE' });
+        // A conta não existe mais: nada a revogar no servidor (as sessões já foram apagadas).
+        const usuarioId = me?.id;
+        await limpar();
+        if (usuarioId) await apagarFilaDoUsuario(usuarioId);
         GoogleSignin.signOut().catch(() => undefined);
       },
     }),
