@@ -112,7 +112,7 @@ As regras completas estão em [02-requisitos.md](02-requisitos.md#regras-de-neg�
 ## Fora de escopo (por enquanto)
 
 - Adoção de **animais** (existem apps para isso). Aqui "adotar" é adotar a **casinha**.
-- Cadastro individual de animais.
+- Cadastro individual de animais (ficha com nome, sexo, castração, vacinas…). Fotos dos animais que frequentam a casinha entram na F2, sem ficha ([D03](#d03--fotos-dos-moradores-sem-cadastro-de-animal-2026-10-01)).
 - Doações em dinheiro dentro do app.
 - Chat entre usuários.
 - iOS e versão web completa.
@@ -140,3 +140,11 @@ Decisões que mudaram o plano original. A mais recente fica no fim.
 - **Por quê:** separar a regra de negócio do banco e do HTTP, testar use-cases sem banco (dublês em memória) e deixar claro o que cada módulo depende dos outros (portas no `domain`, adaptadores na `infra`).
 - **Custo aceito:** mais arquivos e indireção por ação; os testes de ponta a ponta continuam sendo a prova principal das regras que dependem do banco (índices, travas, cascata).
 - **Como foi feito:** piloto no módulo `necessidades`, depois os outros dez (concluído em 2026-09-28); a antiga pasta `comum/` foi absorvida por `shared/`. Um teste de arquitetura impede `domain` de importar Nest/Prisma/infra e `application` de importar Prisma/infra. Detalhes em [04-arquitetura.md](04-arquitetura.md#camadas-de-um-módulo).
+
+### D03 — Fotos dos moradores, sem cadastro de animal (2026-10-01)
+
+- **Antes:** só fotos da casinha (perfil, até 5) e de atividades; cadastro de animais estava fora de escopo.
+- **Agora (F2, T2.15):** a casinha ganha uma seção **"Quem mora aqui"** com fotos dos animais que a frequentam e uma legenda curta opcional ("Caramelo, dócil, aparece de manhã"). Não existe entidade `Animal`: é uma foto com `tipo = animal`.
+- **Por quê:** cria vínculo (ajuda a retenção de contribuidores), mostra que a casinha está em uso e ajuda a notar quando um morador some. A ficha completa de animal (opção B) custaria uma entidade nova, telas, moderação e mescla de duplicatas, e abriria caminho para o app virar app de adoção de animais, que segue fora de escopo.
+- **Custo aceito:** mais fotos para moderar (a denúncia de foto já cobre) e um animal identificado por nome (risco baixo; ver [06-riscos.md](06-riscos.md#3-segurança-dos-animais-localização)).
+- **Se ONGs pedirem a ficha (F3):** a legenda e as fotos de morador viram o ponto de partida da migração para uma entidade `Animal`.

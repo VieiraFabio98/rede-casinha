@@ -108,6 +108,7 @@ Uma casinha é um objeto físico visível na rua. Quem percorre o bairro a pé v
 5. **Verificação manual e revogável**, com limite diário de casinhas exatas e auditoria em `acessos_localizacao`. Consulta semanal: verificados com > 20 casinhas distintas por dia ou acessos fora da própria cidade.
 6. **Nada de "link com coordenada" no compartilhamento** (T2.2): a página pública não mostra mapa nem área, só nome, status e o botão da loja.
 7. **Casinha sensível (F2):** o moderador pode esconder do mapa público uma casinha que já sofreu ataque. Ela fica visível só para adotantes e moderadores.
+8. **Fotos dos moradores (F2, [D03](01-visao-geral.md#d03--fotos-dos-moradores-sem-cadastro-de-animal-2026-10-01)):** um animal com foto e nome fica reconhecível, mas a localização segue protegida pelas camadas acima e as fotos só aparecem para quem está logado. A legenda não deve trazer endereço nem horário exato de alimentação; o aviso da câmera e a denúncia de foto cobrem isso. Casinha sensível esconde também os moradores.
 
 ### Quando algo acontece
 - Denúncia com motivo **"perigo aos animais"** tem prioridade máxima. Avise os adotantes (push na F2).

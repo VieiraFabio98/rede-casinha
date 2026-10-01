@@ -627,13 +627,28 @@ sequenceDiagram
 ## Segurança: resumo
 
 - O app só conhece a URL da API. **Nenhum segredo no app.**
-- **Guard global:** toda rota exige token, exceto as marcadas com `@Publico()` (só auth e `/saude`; nenhuma leitura de casinha, ver [D01](01-visao-geral.md#d01--mapa-só-com-login-2026-09-25)). Um teste e2e lista as rotas públicas e falha se aparecer uma nova sem revisão.
+- **Guard global:** toda rota exige token, exceto as marcadas com `@Publico()` (só auth, `/saude` e as fotos por URL assinada; nenhuma leitura de casinha, ver [D01](01-visao-geral.md#d01--mapa-só-com-login-2026-09-25)). O e2e `test/seguranca.e2e-spec.ts` lê os metadados de todas as rotas e falha se aparecer uma rota pública nova, uma rota sem `@Nivel()` fora das da própria conta (`/me`) ou uma rota `/admin` sem moderador.
 - **DTOs validados** em toda entrada (`whitelist` + `forbidNonWhitelisted`): campos extras são rejeitados.
 - **Localização exata** só sai pelo módulo `localizacao`. Nenhum endpoint devolve a distância entre o usuário e a casinha. Testes e2e para cada nível de acesso.
 - **Tokens:** acesso de 15 min; refresh opaco, rotativo e com hash no banco; códigos por e-mail com hash, validade e limite de tentativas.
-- **HTTP:** `helmet`, CORS fechado, HTTPS pelo Caddy, throttling por IP.
+- **HTTP:** `helmet` (CSP só em produção, por causa do Swagger em dev), CORS fechado (só os sites de `CORS_ORIGENS`, ex.: a página de exclusão de conta da T0.8), HTTPS pelo Caddy, throttling por IP.
+- **Limites (RN06):** contador atômico (`INSERT … ON CONFLICT … RETURNING`) na transação da escrita: pedido recusado não conta, e pedidos simultâneos não furam o limite (testado com 12 cadastros ao mesmo tempo).
 - **Servidor:** Postgres sem porta pública; segredos só no `.env` do servidor (permissão 600); SSH só com chave; firewall liberando 22, 80 e 443.
 - **Logs** sem e-mail, token ou coordenadas.
+
+### Checklist de segurança (revisado em 01/10/2026, T1.13)
+
+| Item | Situação |
+|---|---|
+| DTO validado em toda entrada (`whitelist` + `forbidNonWhitelisted`) | ✅ campo extra dá 400 (e2e) |
+| Nenhuma rota devolve distância ou a exata indevida | ✅ e2e por nível de acesso; adoção responde só `ok`/`nao_permitido`; duplicata devolve nome e foto, sem coordenadas |
+| Fotos só com URL assinada; sem EXIF | ✅ HMAC com expiração; EXIF removido no app e de novo na API; bucket S3 privado, sem CORS |
+| `helmet` e CORS fechado | ✅ e2e |
+| Rotas públicas revisadas | ✅ e2e trava a lista |
+| Limites da RN06 em toda escrita | ✅ contestação incluída em 01/10; e2e de cada limite e de concorrência |
+| Logs sem e-mail, token ou coordenadas | ✅ revisado: só ids, contagens e stacks. Exceção: o driver de e-mail `console` mostra o código no log, mas a API não sobe em produção sem `EMAIL_DRIVER=resend` |
+| Segredos só no `.env` do servidor; Postgres sem porta pública | ⏳ produção é a T0.11. Local: `.env` fora do git, Postgres só em `127.0.0.1` |
+| `npm audit` | ⚠️ aceito: API (4 high) só no CLI do Prisma (`deepmerge-ts` da config, `mysql2` não usado); app (16 moderate) em ferramentas de build do Expo, fora o `decode-uri-component` do `expo-router` (link malicioso pode travar o próprio app; a versão corrigida é só ESM). Rever a cada SDK do Expo e versão do Prisma |
 
 ## Ambientes
 

@@ -1,5 +1,6 @@
 /**
- * Conta 1 contribuição do dia (RN06: 60 por dia) e lança erro se passar do limite.
+ * Conta 1 contribuição do dia (RN06: 60 por dia, somando reportes, reconfirmações, atendimentos,
+ * contestações e check-ins) e lança erro se passar do limite.
  * Módulo `limites`.
  */
 export interface ControleDeLimites {

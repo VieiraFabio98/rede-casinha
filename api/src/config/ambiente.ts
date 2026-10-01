@@ -14,6 +14,20 @@ export const esquemaAmbiente = z
     DATABASE_URL: z.url({ protocol: /^postgres(ql)?$/ }),
     /** `true` atrás do Caddy em produção, para o rate limit enxergar o IP real. */
     CONFIAR_PROXY: booleano,
+    /**
+     * Sites que podem chamar a API pelo navegador (CORS), separados por vírgula. Ex.: a página
+     * "Excluir minha conta" (T0.8). Vazio = nenhum: o app não usa CORS.
+     */
+    CORS_ORIGENS: z
+      .string()
+      .default('')
+      .transform((lista) =>
+        lista
+          .split(',')
+          .map((origem) => origem.trim())
+          .filter(Boolean),
+      )
+      .pipe(z.array(z.url({ protocol: /^https?$/ }))),
 
     /** Assina os JWT de acesso. */
     JWT_SEGREDO: segredo,

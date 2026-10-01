@@ -14,6 +14,8 @@ process.env.NODE_ENV = 'test';
 process.env.EMAIL_DRIVER = 'memoria';
 // Arquivos das fotos também (o teste confere o que foi gravado).
 process.env.ARMAZENAMENTO_DRIVER = 'memoria';
+// Um site liberado no CORS, para o teste de segurança conferir a lista.
+process.env.CORS_ORIGENS = 'https://site.teste';
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },

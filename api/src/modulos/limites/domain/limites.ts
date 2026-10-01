@@ -1,6 +1,6 @@
 /** Limites diários por usuário (RN06). O "dia" vira à meia-noite de Brasília (`diaAtual`). */
 export const LIMITES = {
-  /** Reportes, atendimentos, check-ins e reconfirmações, somados. */
+  /** Reportes, reconfirmações, atendimentos, contestações e check-ins, somados. */
   contribuicoes: 60,
   /** Tentativas de adoção (inclusive as recusadas): impede "caçar" a casinha tentando de vários lugares. */
   adocao: 3,

@@ -56,6 +56,7 @@ Legenda de fase: **MVP** = Fase 1 · **F2** = Fase 2 (comunidade) · **F3** = Fa
 | RF02.8 | Moderador mescla duplicatas, levando histórico e adotantes. | MVP (via SQL) / F2 (tela) |
 | RF02.9 | Compartilhar a casinha por link (WhatsApp) mostrando a área aproximada. | F2 |
 | RF02.10 | Placa com QR code que abre a casinha. | F2 |
+| RF02.11 | "Quem mora aqui": fotos dos animais que frequentam a casinha, com legenda curta opcional. Sem ficha de animal ([D03](01-visao-geral.md#d03--fotos-dos-moradores-sem-cadastro-de-animal-2026-10-01)). | F2 |
 
 ### RF03 — Necessidades e atendimentos
 | ID | Requisito | Fase |
@@ -176,9 +177,9 @@ Uma necessidade aberta **expira** se ninguém a reconfirmar dentro do prazo do t
 |---|---|
 | Cadastrar casinha | 5/dia (colaborador), 20/dia (verificado) |
 | Tentativas de cadastro que batem na checagem de duplicata | 10/dia |
-| Reportes, atendimentos, check-ins e reconfirmações | 60/dia no total |
+| Reportes, reconfirmações, atendimentos, contestações e check-ins | 60/dia no total |
 | Pedidos de adoção | 3/dia |
-| Fotos | 20/dia; máximo de 5 fotos de perfil por casinha; fotos de atendimento são apagadas após 90 dias |
+| Fotos | 20/dia; máximo de 5 fotos de perfil e 8 de moradores (F2) por casinha; fotos de atendimento são apagadas após 90 dias |
 | Denúncias | 20/dia |
 | Casinhas com localização exata vistas (verificado) | 50 distintas/dia |
 

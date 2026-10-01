@@ -5,6 +5,10 @@ import type { UsuarioLogado } from '../../../../shared/domain/usuario-logado.js'
 import { ConflictError } from '../../../../shared/errors/index.js';
 import { prazoExpiracao } from '../../../status/domain/regras.js';
 import {
+  CONTROLE_DE_LIMITES,
+  type ControleDeLimites,
+} from '../../domain/providers/limites.provider.js';
+import {
   RECALCULADOR_DE_STATUS,
   type RecalculadorDeStatus,
 } from '../../domain/providers/status.provider.js';
@@ -20,7 +24,10 @@ import { podeContestar } from '../../domain/regras.js';
 import type { ContestarDto, ResultadoAcao } from '../dto/necessidades.dto.js';
 import { AcaoNaNecessidade } from './acao-na-necessidade.js';
 
-/** "Não foi resolvido" (RF03.5): reabre até 24 h depois do atendimento (RN03). */
+/**
+ * "Não foi resolvido" (RF03.5): reabre até 24 h depois do atendimento (RN03).
+ * Conta como contribuição (RN06): reabrir pedidos em série é o mesmo abuso que reportar em série.
+ */
 @Injectable()
 export class ContestarAtendimentoUseCase {
   constructor(
@@ -28,6 +35,7 @@ export class ContestarAtendimentoUseCase {
     @Inject(NECESSIDADES_REPOSITORY) private readonly necessidades: NecessidadesRepository,
     @Inject(ATIVIDADES_REPOSITORY) private readonly atividades: AtividadesRepository,
     @Inject(RECALCULADOR_DE_STATUS) private readonly status: RecalculadorDeStatus,
+    @Inject(CONTROLE_DE_LIMITES) private readonly limites: ControleDeLimites,
     @Inject(RELOGIO) private readonly relogio: Relogio,
   ) {}
 
@@ -44,6 +52,7 @@ export class ContestarAtendimentoUseCase {
           'fora_do_prazo',
         );
       }
+      await this.limites.consumirContribuicao(usuario.id, agora);
       // Se alguém já reportou de novo o mesmo tipo, aquela fica valendo: só registra a contestação.
       if (!(await this.necessidades.buscarAberta(n.casinhaId, n.tipo))) {
         await this.necessidades.atualizar(necessidadeId, {

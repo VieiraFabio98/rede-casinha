@@ -289,13 +289,13 @@ O **teste fechado de 14 dias com 12 testadores** é exigido de contas pessoais n
   - [ ] Estados vazios úteis ("Nenhuma casinha aqui ainda. Cadastre a primeira!").
   - [ ] Revisão de acessibilidade: `accessibilityLabel` nos botões de ícone e teste com fonte grande.
 
-- [ ] **T1.13 — Limites anti-abuso e revisão de segurança**
+- [x] **T1.13 — Limites anti-abuso e revisão de segurança**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T1.6, T1.7, T1.9
   - Pronto quando: todos os limites da RN06 são aplicados e testados; checklist de segurança revisado e sem pendências.
-  - [ ] Serviço `consumirLimite(usuario, acao, max)` com upsert atômico em `LimiteUso`, chamado em todas as rotas de escrita.
-  - [ ] Teste e2e que lista as rotas marcadas com `@Publico()` e falha se aparecer uma nova sem revisão (o guard global protege todo o resto).
-  - [ ] Checklist: DTO validado em toda entrada; nenhuma rota devolvendo distância ou exata indevida; fotos só com URL assinada; `helmet` e CORS fechado; segredos só no `.env` do servidor; Postgres sem porta pública; logs sem e-mail, token ou coordenadas.
-  - [ ] `npm audit` na API e no app; revisar dependências com alertas.
+  - [x] Serviço `consumirLimite(usuario, acao, max)` com upsert atômico em `LimiteUso`, chamado em todas as rotas de escrita. (`ConsumirLimiteUseCase` com `INSERT … ON CONFLICT … RETURNING`, na transação da escrita. Faltava a contestação: agora conta nas 60 contribuições. Concorrência testada: de 12 cadastros simultâneos, passam 5.)
+  - [x] Teste e2e que lista as rotas marcadas com `@Publico()` e falha se aparecer uma nova sem revisão (o guard global protege todo o resto). (`test/seguranca.e2e-spec.ts`: também trava as rotas sem `@Nivel()` e exige moderador em `/admin`.)
+  - [x] Checklist: DTO validado em toda entrada; nenhuma rota devolvendo distância ou exata indevida; fotos só com URL assinada; `helmet` e CORS fechado; segredos só no `.env` do servidor; Postgres sem porta pública; logs sem e-mail, token ou coordenadas. (Tabela em [04-arquitetura.md](04-arquitetura.md#checklist-de-segurança-revisado-em-01102026-t113). `helmet` e `CORS_ORIGENS` novos. Segredos e Postgres em produção ficam com a T0.11.)
+  - [x] `npm audit` na API e no app; revisar dependências com alertas. (Sem correção segura: a sugerida é rebaixar Prisma/Expo de versão maior. Riscos avaliados e aceitos no checklist. O `expo install --check` pede patches do SDK 57 (`expo`, `expo-constants`, `expo-router`): aplicar no próximo dev build.)
 
 - [ ] **T1.14 — Teste de campo**
   - Prioridade: **alta** · Esforço: **M** · Depende de: T1.2 a T1.13
@@ -408,6 +408,16 @@ Se o prazo apertar, estes itens saem do MVP **sem comprometer o critério de pro
 - [ ] **T2.14 — Migrar fotos para Cloudflare R2** (condicional)
   - Prioridade: **média** · Esforço: **M** · Depende de: gatilho (disco da VPS > 70% ou banda de saída apertando)
   - Pronto quando: novas fotos vão para o R2 pelo driver S3 da interface de armazenamento (URL pré-assinada gerada pela API); as antigas foram migradas por script; nenhum link quebrado.
+
+- [ ] **T2.15 — "Quem mora aqui": fotos dos animais da casinha** ([D03](01-visao-geral.md#d03--fotos-dos-moradores-sem-cadastro-de-animal-2026-10-01), RF02.11)
+  - Prioridade: **média** · Esforço: **M** · Depende de: T1.5, T1.6
+  - Pronto quando: qualquer colaborador adiciona a foto de um animal à casinha, com legenda opcional, online ou offline; o detalhe mostra a seção "Quem mora aqui"; a foto pode ser denunciada e ocultada como as outras; o limite de 8 por casinha é respeitado.
+  - [ ] Prisma: `Foto.tipo` (`casinha` | `animal` | `atividade`, migrando as atuais pelo `atividade_id`) e `Foto.legenda` (até 80 caracteres, mesma validação de texto das observações).
+  - [ ] API: `PUT /fotos/:id` aceita `tipo=animal` e `legenda`; foto de morador pode ser enviada por **qualquer colaborador** (não só criador/adotante), até 8 visíveis por casinha, dentro das 20/dia; detalhe devolve `moradores[]` com URLs e legenda.
+  - [ ] Quem enviou (e o moderador) pode apagar a própria foto de morador; criador/adotante podem ocultar uma foto de morador da casinha (vai para a fila de moderação).
+  - [ ] App: seção "Quem mora aqui" no detalhe (miniaturas com legenda, foto ampliada), botão "Adicionar morador" com o mesmo aviso de câmera e campo de legenda; vai pela fila offline (operação `enviar_foto` com `tipo`).
+  - [ ] Texto fixo na seção: "Aqui a adoção é da casinha. Para adotar um animal, procure uma ONG da sua cidade." (evita pedidos de adoção de animal).
+  - [ ] Riscos: incluir em `06-riscos.md` (animal identificado por nome) e a legenda na denúncia de foto (motivo "ofensiva").
 
 ---
 
